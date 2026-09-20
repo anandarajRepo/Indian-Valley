@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/Farm.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/HUD.gd" id="2"]
+
+[node name="Farm" type="Node2D"]
+script = ExtResource("1")
+
+[node name="TileMap" type="TileMap" parent="."]
+## TileSet resource to be assigned in editor once tileset art is ready.
+## Layer 0 = Ground (soil, grass, water, path)
+## Layer 1 = Crops  (crop sprites per growth stage)
+## Layer 2 = Objects (chest, signs, decorations)
+tile_set = null
+
+[node name="PlayerSpawn" type="Marker2D" parent="."]
+## Position in world pixels — the player will spawn here on load.
+## Default: roughly centre-left of the farm plot.
+position = Vector2(96, 88)
+
+[node name="ShippingChest" type="StaticBody2D" parent="."]
+## Shipping chest — player walks up to deposit items for overnight sale.
+position = Vector2(160, 128)
+
+[node name="ShippingChestShape" type="CollisionShape2D" parent="ShippingChest"]
+
+[node name="ShippingChestSprite" type="Sprite2D" parent="ShippingChest"]
+## Texture to be assigned once art assets exist.
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("2")
+layer = 10
