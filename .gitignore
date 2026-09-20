@@ -1,0 +1,36 @@
+# Godot 4 generated files
+.godot/
+*.import
+
+# Exported builds
+build/
+export/
+
+# Godot editor settings (machine-specific)
+*.translation
+.mono/
+
+# macOS
+.DS_Store
+__MACOSX/
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# Linux
+*~
+
+# IDE
+.vscode/
+.idea/
+
+# Python tooling
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# Save data (don't commit player saves)
+saves/

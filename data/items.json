@@ -1,0 +1,39 @@
+{
+  "items": [
+    { "id": "paddy_seed",      "name": "Paddy Seed",       "category": "seed",    "buy_price": 20,  "sell_price": 5,   "icon": "paddy_seed",      "stack_max": 99 },
+    { "id": "chilli_seed",     "name": "Chilli Seed",      "category": "seed",    "buy_price": 25,  "sell_price": 8,   "icon": "chilli_seed",     "stack_max": 99 },
+    { "id": "turmeric_seed",   "name": "Turmeric Rhizome", "category": "seed",    "buy_price": 40,  "sell_price": 12,  "icon": "turmeric_seed",   "stack_max": 99 },
+    { "id": "banana_sapling",  "name": "Banana Sapling",   "category": "seed",    "buy_price": 80,  "sell_price": 20,  "icon": "banana_sapling",  "stack_max": 10 },
+    { "id": "coconut_sapling", "name": "Coconut Sapling",  "category": "seed",    "buy_price": 100, "sell_price": 25,  "icon": "coconut_sapling", "stack_max": 10 },
+    { "id": "pepper_vine",     "name": "Pepper Vine",      "category": "seed",    "buy_price": 60,  "sell_price": 15,  "icon": "pepper_vine",     "stack_max": 99 },
+    { "id": "toor_seed",       "name": "Toor Dal Seed",    "category": "seed",    "buy_price": 20,  "sell_price": 5,   "icon": "toor_seed",       "stack_max": 99 },
+    { "id": "jasmine_seed",    "name": "Jasmine Cutting",  "category": "seed",    "buy_price": 15,  "sell_price": 4,   "icon": "jasmine_seed",    "stack_max": 99 },
+    { "id": "sugarcane_stalk", "name": "Sugarcane Stalk",  "category": "seed",    "buy_price": 30,  "sell_price": 8,   "icon": "sugarcane_stalk", "stack_max": 99 },
+    { "id": "marigold_seed",   "name": "Marigold Seed",    "category": "seed",    "buy_price": 10,  "sell_price": 3,   "icon": "marigold_seed",   "stack_max": 99 },
+
+    { "id": "paddy_grain",     "name": "Paddy Grain",      "category": "crop",    "buy_price": 0,   "sell_price": 40,  "icon": "paddy_grain",     "stack_max": 999 },
+    { "id": "red_chilli",      "name": "Red Chilli",       "category": "crop",    "buy_price": 0,   "sell_price": 55,  "icon": "red_chilli",      "stack_max": 999 },
+    { "id": "turmeric_root",   "name": "Turmeric Root",    "category": "crop",    "buy_price": 0,   "sell_price": 80,  "icon": "turmeric_root",   "stack_max": 999 },
+    { "id": "banana_bunch",    "name": "Banana Bunch",     "category": "crop",    "buy_price": 0,   "sell_price": 100, "icon": "banana_bunch",    "stack_max": 99  },
+    { "id": "coconut",         "name": "Coconut",          "category": "crop",    "buy_price": 0,   "sell_price": 120, "icon": "coconut",         "stack_max": 99  },
+    { "id": "black_pepper",    "name": "Black Pepper",     "category": "crop",    "buy_price": 0,   "sell_price": 150, "icon": "black_pepper",    "stack_max": 999 },
+    { "id": "toor_dal",        "name": "Toor Dal",         "category": "crop",    "buy_price": 0,   "sell_price": 45,  "icon": "toor_dal",        "stack_max": 999 },
+    { "id": "jasmine_flower",  "name": "Jasmine",          "category": "crop",    "buy_price": 0,   "sell_price": 35,  "icon": "jasmine_flower",  "stack_max": 999 },
+    { "id": "sugarcane",       "name": "Sugarcane",        "category": "crop",    "buy_price": 0,   "sell_price": 60,  "icon": "sugarcane",       "stack_max": 99  },
+    { "id": "marigold_flower", "name": "Marigold",         "category": "crop",    "buy_price": 0,   "sell_price": 30,  "icon": "marigold_flower", "stack_max": 999 },
+
+    { "id": "hoe",             "name": "Hoe",              "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "hoe",             "stack_max": 1, "tool_type": "hoe",      "energy_cost": 2 },
+    { "id": "watering_can",    "name": "Watering Can",     "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "watering_can",    "stack_max": 1, "tool_type": "water",    "energy_cost": 2 },
+    { "id": "sickle",          "name": "Sickle",           "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "sickle",          "stack_max": 1, "tool_type": "harvest",  "energy_cost": 1 },
+    { "id": "fishing_rod",     "name": "Fishing Rod",      "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "fishing_rod",     "stack_max": 1, "tool_type": "fish",     "energy_cost": 4 },
+    { "id": "pickaxe",         "name": "Pickaxe",          "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "pickaxe",         "stack_max": 1, "tool_type": "mine",     "energy_cost": 5 },
+
+    { "id": "idli",            "name": "Idli",             "category": "food",    "buy_price": 50,  "sell_price": 25,  "icon": "idli",            "stack_max": 10, "energy_restore": 50 },
+    { "id": "dosa",            "name": "Dosa",             "category": "food",    "buy_price": 60,  "sell_price": 30,  "icon": "dosa",            "stack_max": 5,  "energy_restore": 40 },
+    { "id": "banana_leaf_rice","name": "Banana Leaf Rice", "category": "food",    "buy_price": 100, "sell_price": 0,   "icon": "rice_meal",       "stack_max": 5,  "energy_restore": 80 },
+
+    { "id": "stone",           "name": "Stone",            "category": "mineral", "buy_price": 0,   "sell_price": 2,   "icon": "stone",           "stack_max": 999 },
+    { "id": "copper_ore",      "name": "Copper Ore",       "category": "mineral", "buy_price": 0,   "sell_price": 15,  "icon": "copper_ore",      "stack_max": 999 },
+    { "id": "iron_ore",        "name": "Iron Ore",         "category": "mineral", "buy_price": 0,   "sell_price": 25,  "icon": "iron_ore",        "stack_max": 999 }
+  ]
+}
