@@ -44,6 +44,8 @@ var inventory: Node = null
 # ---------------------------------------------------------------------------
 
 func _ready() -> void:
+	# The Inventory lives as a child node on the Player scene.
+	inventory = get_node_or_null("Inventory")
 	# Connect clock pause so player freezes during menus
 	GameClock.sleep_triggered.connect(_on_sleep)
 
@@ -113,7 +115,8 @@ func _update_tool_area() -> void:
 # ---------------------------------------------------------------------------
 
 func _update_animation() -> void:
-	if sprite == null:
+	# No SpriteFrames assigned yet (Phase 0 has no art) — skip to avoid errors.
+	if sprite == null or sprite.sprite_frames == null:
 		return
 
 	var dir_name: String
