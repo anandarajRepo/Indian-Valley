@@ -22,12 +22,22 @@ signal sleep_triggered()         ## Emitted at 2am or when player sleeps manuall
 # Constants
 # ---------------------------------------------------------------------------
 
+## The playable year begins at Ugadi (the New Year / Spring festival) and then
+## rolls through the growing seasons: Ugadi → Kharif → Rabi → Winter → Ugadi.
+## The enum values are kept stable (save-compatible); the calendar order is
+## defined by SEASON_ORDER below.
 enum Season {
 	KHARIF  = 0,   ## Monsoon / Summer  (crop-rich, rain)
 	RABI    = 1,   ## Post-monsoon / Autumn
 	WINTER  = 2,   ## Bittersweet still; no field crops
-	UGADI   = 3,   ## New Year / Spring (festivals, flowers)
+	UGADI   = 3,   ## New Year / Spring (festivals, flowers) — the year starts here
 }
+
+## Calendar order of seasons within a year, starting at the New Year (Ugadi).
+const SEASON_ORDER: Array = [Season.UGADI, Season.KHARIF, Season.RABI, Season.WINTER]
+
+## The season a fresh game begins in.
+const STARTING_SEASON: Season = Season.UGADI
 
 const SEASON_NAMES: Dictionary = {
 	Season.KHARIF:  "Kharif",
@@ -56,7 +66,7 @@ const SECONDS_PER_INGAME_MINUTE: float = 0.714
 var current_hour: int   = DAY_START_HOUR
 var current_minute: int = 0
 var current_day: int    = 1
-var current_season: Season = Season.KHARIF
+var current_season: Season = STARTING_SEASON
 var current_year: int   = 1
 
 ## Absolute count of days that have fully elapsed since a new game began.
@@ -117,6 +127,21 @@ func _trigger_sleep() -> void:
 # Public API
 # ---------------------------------------------------------------------------
 
+func reset_to_new_game() -> void:
+	## Reset the calendar to the very first morning of a fresh game (Ugadi 1).
+	current_hour   = DAY_START_HOUR
+	current_minute = 0
+	current_day    = 1
+	current_season = STARTING_SEASON
+	current_year   = 1
+	days_elapsed   = 0
+	_elapsed       = 0.0
+	resume()
+	emit_signal("season_changed", current_season)
+	emit_signal("year_changed", current_year)
+	emit_signal("time_changed", current_hour, current_minute)
+
+
 func end_day() -> void:
 	## Called by the sleep system after all overnight processing is done.
 	emit_signal("day_ended", current_day, current_season)
@@ -139,11 +164,16 @@ func _advance_day() -> void:
 
 
 func _advance_season() -> void:
-	var next_season_index = (int(current_season) + 1) % SEASONS_PER_YEAR
-	current_season = next_season_index as Season
+	## Step to the next season in calendar order (Ugadi → Kharif → Rabi → Winter → …).
+	var order_index = SEASON_ORDER.find(current_season)
+	if order_index == -1:
+		order_index = 0
+	order_index = (order_index + 1) % SEASON_ORDER.size()
+	current_season = SEASON_ORDER[order_index]
 	emit_signal("season_changed", current_season)
 
-	if current_season == Season.KHARIF:
+	## A new year begins when we roll back around to Ugadi (the New Year).
+	if current_season == STARTING_SEASON:
 		current_year += 1
 		emit_signal("year_changed", current_year)
 
@@ -199,7 +229,7 @@ func from_dict(d: Dictionary) -> void:
 	current_hour   = d.get("hour",   DAY_START_HOUR)
 	current_minute = d.get("minute", 0)
 	current_day    = d.get("day",    1)
-	current_season = d.get("season", 0) as Season
+	current_season = int(d.get("season", STARTING_SEASON)) as Season
 	current_year   = d.get("year",   1)
 	days_elapsed   = d.get("days_elapsed", 0)
 	_elapsed       = 0.0

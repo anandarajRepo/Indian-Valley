@@ -1,0 +1,84 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/Town.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/systems/NPC.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/systems/Warp.gd" id="3"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(16, 16)
+
+[node name="Town" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Ground" type="Polygon2D" parent="."]
+## Grassy village square.
+color = Color(0.32, 0.5, 0.24, 1)
+polygon = PackedVector2Array(0, 0, 320, 0, 320, 240, 0, 240)
+
+[node name="Path" type="Polygon2D" parent="."]
+## The road running down from the farm through the square.
+color = Color(0.62, 0.58, 0.45, 1)
+polygon = PackedVector2Array(148, 0, 172, 0, 172, 240, 148, 240)
+
+[node name="Store" type="Polygon2D" parent="."]
+## Kavitha's General Store building (decorative).
+position = Vector2(90, 88)
+color = Color(0.5, 0.32, 0.2, 1)
+polygon = PackedVector2Array(-36, -36, 36, -36, 36, 20, -36, 20)
+
+[node name="StoreRoof" type="Polygon2D" parent="."]
+position = Vector2(90, 52)
+color = Color(0.75, 0.3, 0.22, 1)
+polygon = PackedVector2Array(-42, 0, 42, 0, 30, -18, -30, -18)
+
+[node name="Spawns" type="Node2D" parent="."]
+
+[node name="default" type="Marker2D" parent="Spawns"]
+position = Vector2(160, 120)
+
+[node name="from_farm" type="Marker2D" parent="Spawns"]
+position = Vector2(160, 56)
+
+[node name="Kavitha" type="StaticBody2D" parent="."]
+## Shopkeeper — talking to her opens the General Store.
+position = Vector2(96, 128)
+script = ExtResource("2")
+npc_name = "Kavitha"
+dialogue = "Vanakkam! Welcome to my store.\nFresh seeds for the season, just in.\nTake a look at what's growing well right now."
+opens_shop = true
+
+[node name="KavithaShape" type="CollisionShape2D" parent="Kavitha"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="KavithaSprite" type="Polygon2D" parent="Kavitha"]
+color = Color(0.9, 0.55, 0.3, 1)
+polygon = PackedVector2Array(-6, -14, 6, -14, 6, 8, -6, 8)
+
+[node name="Murugan" type="StaticBody2D" parent="."]
+## A friendly villager with a bit of flavour and a farming tip.
+position = Vector2(224, 128)
+script = ExtResource("2")
+npc_name = "Murugan"
+dialogue = "Ah, the young one from the old farm!\nYour grandparents grew the sweetest watermelon in the valley.\nWater your crops every day, or they'll just sit there sulking.\nShip what you grow in the chest by the plot — Kavitha's cousin buys it overnight."
+opens_shop = false
+
+[node name="MuruganShape" type="CollisionShape2D" parent="Murugan"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="MuruganSprite" type="Polygon2D" parent="Murugan"]
+color = Color(0.4, 0.55, 0.85, 1)
+polygon = PackedVector2Array(-6, -14, 6, -14, 6, 8, -6, 8)
+
+[node name="ToFarm" type="Area2D" parent="."]
+## Road back up to the farm.
+position = Vector2(160, 8)
+script = ExtResource("3")
+target_scene = "res://scenes/World/Farm.tscn"
+target_spawn = "from_town"
+
+[node name="ToFarmShape" type="CollisionShape2D" parent="ToFarm"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="ToFarmSprite" type="Polygon2D" parent="ToFarm"]
+color = Color(0.5, 0.42, 0.3, 1)
+polygon = PackedVector2Array(-12, -6, 12, -6, 12, 6, -12, 6)

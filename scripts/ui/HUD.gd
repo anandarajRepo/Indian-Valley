@@ -35,6 +35,10 @@ func _ready() -> void:
 	_update_clock()
 	_update_energy(GameData.energy_current, GameData.energy_max)
 	_update_gold(GameData.gold)
+	refresh_from_state()
+	# Hidden on the main menu; shown while in a playable world.
+	var gm = GameManager.instance
+	visible = gm != null and gm.in_game
 
 
 func _process(delta: float) -> void:
@@ -113,7 +117,11 @@ func _build_hud() -> void:
 		btn.size = Vector2(44, 44)
 		btn.flat = true
 		var slot_index = i
-		btn.pressed.connect(func(): emit_signal("hotbar_slot_clicked", slot_index))
+		btn.pressed.connect(func():
+			emit_signal("hotbar_slot_clicked", slot_index)
+			if GameManager.instance:
+				GameManager.instance.set_hotbar_index(slot_index)
+		)
 		slot.add_child(btn)
 
 	_highlight_hotbar(0)
@@ -135,6 +143,28 @@ func _connect_signals() -> void:
 	GameClock.time_changed.connect(_on_time_changed)
 	GameData.energy_changed.connect(_update_energy)
 	GameData.gold_changed.connect(_update_gold)
+	var gm = GameManager.instance
+	if gm:
+		gm.inventory_updated.connect(refresh_from_state)
+		gm.game_state_changed.connect(_on_game_state_changed)
+
+
+func _on_game_state_changed(is_in_game: bool) -> void:
+	visible = is_in_game
+	if is_in_game:
+		refresh_from_state()
+
+
+func refresh_from_state() -> void:
+	## Pull the hotbar straight from the manager's persistent inventory snapshot.
+	var gm = GameManager.instance
+	if gm == null:
+		return
+	var slots: Array = gm.inventory_data.get("slots", [])
+	var hotbar: Array = []
+	for i in range(5):
+		hotbar.append(slots[i] if i < slots.size() else null)
+	update_hotbar(hotbar, int(gm.inventory_data.get("hotbar_index", 0)))
 
 
 # ---------------------------------------------------------------------------

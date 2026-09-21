@@ -44,6 +44,7 @@ var inventory: Node = null
 # ---------------------------------------------------------------------------
 
 func _ready() -> void:
+	add_to_group("player")
 	# The Inventory lives as a child node on the Player scene.
 	inventory = get_node_or_null("Inventory")
 	# Connect clock pause so player freezes during menus
