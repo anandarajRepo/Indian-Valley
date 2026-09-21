@@ -62,7 +62,7 @@ Indian-Valley/
 
 | Phase | Goal | Status |
 |---|---|---|
-| 0 — Foundations | Core loop proof of concept | 🚧 In progress |
+| 0 — Foundations | Core loop proof of concept | ✅ Complete |
 | 1 — Vertical Slice | Playable Spring season | ⏳ Planned |
 | 2 — Alpha | Full year one | ⏳ Planned |
 | 3 — Beta | Content-complete, itch.io demo | ⏳ Planned |

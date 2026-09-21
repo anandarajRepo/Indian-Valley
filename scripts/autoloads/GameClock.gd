@@ -59,6 +59,11 @@ var current_day: int    = 1
 var current_season: Season = Season.KHARIF
 var current_year: int   = 1
 
+## Absolute count of days that have fully elapsed since a new game began.
+## Day 1 == 0 elapsed. Used by farming systems to track crop growth without
+## worrying about season/year wrap-around.
+var days_elapsed: int   = 0
+
 var _elapsed: float = 0.0
 var _paused:  bool  = false
 
@@ -101,6 +106,8 @@ func _advance_hour() -> void:
 
 
 func _trigger_sleep() -> void:
+	if _paused:
+		return   ## Already sleeping / mid-transition — ignore duplicate triggers.
 	pause()
 	emit_signal("sleep_triggered")
 	# GameData / Player will call end_day() after handling the sleep sequence
@@ -120,6 +127,7 @@ func end_day() -> void:
 
 func _advance_day() -> void:
 	current_day += 1
+	days_elapsed += 1
 	if current_day > DAYS_PER_SEASON:
 		current_day = 1
 		_advance_season()
@@ -182,6 +190,7 @@ func to_dict() -> Dictionary:
 		"day":     current_day,
 		"season":  int(current_season),
 		"year":    current_year,
+		"days_elapsed": days_elapsed,
 	}
 
 
@@ -192,4 +201,5 @@ func from_dict(d: Dictionary) -> void:
 	current_day    = d.get("day",    1)
 	current_season = d.get("season", 0) as Season
 	current_year   = d.get("year",   1)
+	days_elapsed   = d.get("days_elapsed", 0)
 	_elapsed       = 0.0
