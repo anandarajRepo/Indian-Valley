@@ -32,8 +32,25 @@ var _hotbar_index: int = 0       ## Currently selected hotbar slot (0–4)
 func _ready() -> void:
 	_slots.resize(INVENTORY_SIZE)
 	_slots.fill(null)
-	## Give player starter tools
-	_give_starter_items()
+
+	## Restore the persistent inventory (survives Farm↔Town trips and loads).
+	## An empty snapshot means a fresh game — hand out starter items.
+	var gm = GameManager.instance
+	if gm != null and not gm.inventory_data.is_empty():
+		from_dict(gm.inventory_data)
+	else:
+		_give_starter_items()
+
+	## Keep the manager's snapshot in sync with every change.
+	inventory_changed.connect(_sync_to_manager)
+	hotbar_selection_changed.connect(func(_i): _sync_to_manager())
+	_sync_to_manager()
+
+
+func _sync_to_manager() -> void:
+	var gm = GameManager.instance
+	if gm != null:
+		gm.set_inventory_data(to_dict())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -41,11 +58,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		set_hotbar_index((_hotbar_index + 1) % HOTBAR_SIZE)
 	elif event.is_action_pressed("hotbar_prev"):
 		set_hotbar_index((_hotbar_index - 1 + HOTBAR_SIZE) % HOTBAR_SIZE)
-	else:
+	elif event is InputEventKey and event.pressed and not event.echo:
 		## Number keys 1–5 for direct hotbar selection
 		for i in range(1, HOTBAR_SIZE + 1):
-			if event.is_action_pressed("ui_text_select_all") or \
-			   (event is InputEventKey and event.pressed and event.keycode == KEY_0 + i):
+			if event.keycode == KEY_0 + i:
 				set_hotbar_index(i - 1)
 				break
 
@@ -156,11 +172,12 @@ func is_full() -> bool:
 # ---------------------------------------------------------------------------
 
 func _give_starter_items() -> void:
+	## A spring (Ugadi) starting kit — the tools plus two fast, forgiving crops.
 	add_item("hoe")
 	add_item("watering_can")
 	add_item("sickle")
-	add_item("paddy_seed", 15)
-	add_item("chilli_seed", 10)
+	add_item("okra_seed", 15)
+	add_item("amaranth_seed", 10)
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +195,15 @@ func from_dict(d: Dictionary) -> void:
 	var saved = d.get("slots", [])
 	_slots.fill(null)
 	for i in range(min(saved.size(), INVENTORY_SIZE)):
-		_slots[i] = saved[i]
-	_hotbar_index = d.get("hotbar_index", 0)
+		var entry = saved[i]
+		if entry == null:
+			_slots[i] = null
+		else:
+			# JSON numbers parse as floats — normalise quantity back to int.
+			_slots[i] = {
+				"item_id": entry.get("item_id", ""),
+				"quantity": int(entry.get("quantity", 0)),
+			}
+	_hotbar_index = int(d.get("hotbar_index", 0))
 	emit_signal("inventory_changed")
 	emit_signal("hotbar_selection_changed", _hotbar_index)

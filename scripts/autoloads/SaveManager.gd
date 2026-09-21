@@ -12,6 +12,10 @@ signal save_completed(slot: int)
 signal load_completed(slot: int)
 signal load_failed(slot: int, reason: String)
 
+## The full parsed contents of the most recently loaded save. Lets the game
+## manager pull scene-specific sections (farm tiles, inventory) after a load.
+var last_loaded: Dictionary = {}
+
 
 func _ready() -> void:
 	_ensure_save_dir()
@@ -94,6 +98,9 @@ func load_game(slot: int) -> bool:
 		GameClock.from_dict(data["clock"])
 	if data.has("player"):
 		GameData.from_dict(data["player"])
+
+	# Stash the full payload so the manager can restore farm tiles / inventory.
+	last_loaded = data
 
 	emit_signal("load_completed", slot)
 	print("[SaveManager] Game loaded from slot %d" % slot)

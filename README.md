@@ -63,11 +63,50 @@ Indian-Valley/
 | Phase | Goal | Status |
 |---|---|---|
 | 0 — Foundations | Core loop proof of concept | ✅ Complete |
-| 1 — Vertical Slice | Playable Spring season | ⏳ Planned |
+| 1 — Vertical Slice | Playable Spring season | ✅ Complete |
 | 2 — Alpha | Full year one | ⏳ Planned |
 | 3 — Beta | Content-complete, itch.io demo | ⏳ Planned |
 | 4 — Polish | Release-ready | ⏳ Planned |
 | 5 — Launch | Steam Early Access | ⏳ Planned |
+
+## Phase 1 — Vertical Slice (Playable Spring)
+
+The game now boots to a **title screen** and plays a full **Spring (Ugadi)**
+season loop end to end. Ugadi is the New Year in Viralpadi, so the calendar
+begins there and rolls Ugadi → Kharif → Rabi → Winter → Ugadi.
+
+**What's in the slice**
+
+- **Title screen** — New Game / Continue / Quit. Continue loads slot 0.
+- **Two connected worlds** — walk the road between your **Farm** and
+  **Viralpadi town** (seamless scene warps; the farm keeps its state).
+- **Full farming loop** — till → plant → water → grow (overnight) → harvest →
+  ship. Crops render through placeholder growth stages; watering must be redone
+  each morning; seeds are consumed on planting.
+- **9 Spring crops** — okra, amaranth greens, brinjal, ridge gourd, cluster
+  beans, watermelon, sunflower, jasmine and marigold.
+- **Town life** — talk to villagers (Kavitha, Murugan) via a dialogue box, and
+  buy season-appropriate seeds & food at **Kavitha's General Store**.
+- **Persistence** — inventory survives Farm↔Town trips; the game auto-saves
+  each morning, plus a manual **Save** in the pause menu.
+- **UI** — persistent HUD (clock/date, energy, gold, hotbar), a full inventory
+  screen, a day-summary card after sleeping, and a pause menu.
+
+**Controls**
+
+| Action | Key(s) |
+|---|---|
+| Move | WASD / Arrows |
+| Use tool / plant | Left-click or X |
+| Interact (NPCs, chest, bed) | Z / Enter |
+| Hotbar select | 1–5, or Q / E |
+| Inventory screen | I / T |
+| Sleep (or use the bed) | F |
+| Advance dialogue | Z / Enter / X |
+| Pause menu | Esc |
+
+Sleep on the farm (bed or **F**), or when energy runs out, to sell the shipping
+chest's contents overnight, grow your crops, and start the next day.
 
 ## Setting & Lore
 

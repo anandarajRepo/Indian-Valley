@@ -2,7 +2,7 @@ extends StaticBody2D
 ## ShippingChest.gd — The wooden chest on the farm edge.
 ##
 ## Player walks up and presses Interact to deposit items.
-## Items sell overnight; gold is credited in GameData._process_shipping().
+## Items sell overnight; gold is credited in GameData.process_shipping().
 ## Only crops, minerals, and forageable items can be shipped — not tools/food.
 
 signal chest_opened()

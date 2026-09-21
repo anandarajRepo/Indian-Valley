@@ -23,7 +23,12 @@ var player_hair: int       = 0
 # Economy
 # ---------------------------------------------------------------------------
 
-var gold: int = 500          ## Starting gold
+const STARTING_GOLD: int = 500
+
+var gold: int = STARTING_GOLD          ## Starting gold
+
+## Gold earned from the most recent overnight shipping run (for the day summary).
+var last_earnings: int = 0
 
 # ---------------------------------------------------------------------------
 # Energy
@@ -162,17 +167,19 @@ func add_to_shipping(item_id: String, quantity: int) -> void:
 	shipping_chest.append({"item_id": item_id, "quantity": quantity})
 
 
-func _process_shipping() -> void:
-	## Resolve overnight sales and credit gold.
+func process_shipping() -> int:
+	## Resolve overnight sales and credit gold. Returns the amount earned.
 	var total_earned: int = 0
 	for entry in shipping_chest:
 		var item = ItemDB.get_item(entry["item_id"])
-		if item:
-			total_earned += item["sell_price"] * entry["quantity"]
+		if not item.is_empty():
+			total_earned += item.get("sell_price", 0) * entry["quantity"]
 	shipping_chest.clear()
+	last_earnings = total_earned
 	if total_earned > 0:
 		add_gold(total_earned)
 		print("[GameData] Overnight sales: +%d gold" % total_earned)
+	return total_earned
 
 
 # ---------------------------------------------------------------------------
@@ -180,11 +187,40 @@ func _process_shipping() -> void:
 # ---------------------------------------------------------------------------
 
 func _on_sleep_triggered() -> void:
-	_process_shipping()
+	## Overnight orchestration. Runs whenever the player sleeps or passes out.
+	var earnings := process_shipping()
 	restore_energy()
 	emit_signal("day_ended_processing")
-	# Tell the clock to advance the day
+
+	# Advance the calendar to the next morning.
 	GameClock.end_day()
+
+	# Let the game manager advance the farm simulation, persist, and show the
+	# day summary. Looked up via group rather than the GameManager class, since
+	# autoloads compile before global class names are registered.
+	var gm = get_tree().get_first_node_in_group("game")
+	if gm != null:
+		gm.on_overnight(earnings)
+
+
+func reset_to_new_game() -> void:
+	## Reset all player state for a fresh game.
+	player_name    = "Arya"
+	player_skin    = 0
+	player_hair    = 0
+	gold           = STARTING_GOLD
+	last_earnings  = 0
+	energy_max     = 100
+	energy_current = energy_max
+	skill_farming  = 0
+	skill_mining   = 0
+	skill_foraging = 0
+	skill_fishing  = 0
+	skill_combat   = 0
+	_skill_xp      = {"farming": 0, "mining": 0, "foraging": 0, "fishing": 0, "combat": 0}
+	shipping_chest = []
+	emit_signal("gold_changed", gold)
+	emit_signal("energy_changed", energy_current, energy_max)
 
 
 # ---------------------------------------------------------------------------
