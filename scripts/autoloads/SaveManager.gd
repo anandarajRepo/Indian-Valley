@@ -2,11 +2,15 @@ extends Node
 ## SaveManager.gd — Autoload handling JSON save/load across 3 slots.
 ##
 ## Save file path: user://saves/slot_{n}.json
-## Each save contains: clock state, player data, farm tile data, inventory.
+## Each save contains: clock state, player data, weather, friendships, calendar
+## progress, plus scene data from the GameManager (farm tiles, inventory,
+## forage spawns, Panchayat Hall offerings).
 
 const SAVE_DIR:   String = "user://saves/"
 const SLOT_COUNT: int    = 3
-const VERSION:    int    = 1   ## Increment on breaking save format changes
+const VERSION:    int    = 2   ## Increment on breaking save format changes
+## v2 (Phase 2 — Alpha): adds "weather", "social", "calendar", "world", "hall"
+##     sections and player "stats". v1 saves load with fresh defaults for these.
 
 signal save_completed(slot: int)
 signal load_completed(slot: int)
@@ -43,6 +47,9 @@ func save_game(slot: int, extra_data: Dictionary = {}) -> bool:
 		"saved_at": Time.get_datetime_string_from_system(),
 		"clock":    GameClock.to_dict(),
 		"player":   GameData.to_dict(),
+		"weather":  Weather.to_dict(),
+		"social":   Relationships.to_dict(),
+		"calendar": Calendar.to_dict(),
 	}
 
 	# Merge any extra scene-specific data (e.g. farm tiles, NPC states)
@@ -98,6 +105,10 @@ func load_game(slot: int) -> bool:
 		GameClock.from_dict(data["clock"])
 	if data.has("player"):
 		GameData.from_dict(data["player"])
+	# Sections added in v2 — an absent section restores clean defaults.
+	Relationships.from_dict(data.get("social", {}))
+	Calendar.from_dict(data.get("calendar", {}))
+	Weather.from_dict(data.get("weather", {}))
 
 	# Stash the full payload so the manager can restore farm tiles / inventory.
 	last_loaded = data
@@ -157,6 +168,11 @@ func _slot_path(slot: int) -> String:
 
 
 func _migrate(data: Dictionary, from_version: int) -> Dictionary:
-	## Placeholder for future save format migrations.
-	## Add migration steps here as the format evolves.
+	## Upgrade older save payloads step by step to the current format.
+	if from_version < 2:
+		# v1 → v2: new sections simply start empty; loaders fill in defaults.
+		for key in ["weather", "social", "calendar", "world", "hall"]:
+			if not data.has(key):
+				data[key] = {}
+	data["version"] = VERSION
 	return data

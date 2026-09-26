@@ -1,0 +1,94 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/GhatsTrail.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/systems/Warp.gd" id="2"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(16, 16)
+
+[node name="GhatsTrail" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Ground" type="Polygon2D" parent="."]
+; Forest floor of the Ghats foothills.
+color = Color(0.22, 0.4, 0.2, 1)
+polygon = PackedVector2Array(0, 0, 320, 0, 320, 240, 0, 240)
+
+[node name="River" type="Polygon2D" parent="."]
+; The Ghats river — tiles x 2..4 (see GhatsTrail.RIVER). Fish here.
+color = Color(0.22, 0.42, 0.62, 1)
+polygon = PackedVector2Array(32, 0, 80, 0, 80, 240, 32, 240)
+
+[node name="RiverBank" type="Polygon2D" parent="."]
+color = Color(0.5, 0.44, 0.3, 1)
+polygon = PackedVector2Array(80, 0, 88, 0, 88, 240, 80, 240)
+
+[node name="TrailPath" type="Polygon2D" parent="."]
+; The footpath back east to the farm.
+color = Color(0.55, 0.47, 0.32, 1)
+polygon = PackedVector2Array(88, 112, 320, 112, 320, 128, 88, 128)
+
+[node name="Trees" type="Node2D" parent="."]
+; Decorative canopy (no collision).
+
+[node name="Tree1" type="Polygon2D" parent="Trees"]
+position = Vector2(120, 30)
+color = Color(0.13, 0.33, 0.16, 0.9)
+polygon = PackedVector2Array(0, -14, 11, -4, 8, 10, -8, 10, -11, -4)
+
+[node name="Tree2" type="Polygon2D" parent="Trees"]
+position = Vector2(200, 24)
+color = Color(0.13, 0.33, 0.16, 0.9)
+polygon = PackedVector2Array(0, -14, 11, -4, 8, 10, -8, 10, -11, -4)
+
+[node name="Tree3" type="Polygon2D" parent="Trees"]
+position = Vector2(260, 60)
+color = Color(0.13, 0.33, 0.16, 0.9)
+polygon = PackedVector2Array(0, -14, 11, -4, 8, 10, -8, 10, -11, -4)
+
+[node name="Tree4" type="Polygon2D" parent="Trees"]
+position = Vector2(110, 120)
+color = Color(0.13, 0.33, 0.16, 0.9)
+polygon = PackedVector2Array(0, -14, 11, -4, 8, 10, -8, 10, -11, -4)
+
+[node name="Tree5" type="Polygon2D" parent="Trees"]
+position = Vector2(236, 140)
+color = Color(0.13, 0.33, 0.16, 0.9)
+polygon = PackedVector2Array(0, -14, 11, -4, 8, 10, -8, 10, -11, -4)
+
+[node name="Tree6" type="Polygon2D" parent="Trees"]
+position = Vector2(150, 200)
+color = Color(0.13, 0.33, 0.16, 0.9)
+polygon = PackedVector2Array(0, -14, 11, -4, 8, 10, -8, 10, -11, -4)
+
+[node name="Tree7" type="Polygon2D" parent="Trees"]
+position = Vector2(270, 210)
+color = Color(0.13, 0.33, 0.16, 0.9)
+polygon = PackedVector2Array(0, -14, 11, -4, 8, 10, -8, 10, -11, -4)
+
+[node name="Tree8" type="Polygon2D" parent="Trees"]
+position = Vector2(180, 96)
+color = Color(0.13, 0.33, 0.16, 0.9)
+polygon = PackedVector2Array(0, -14, 11, -4, 8, 10, -8, 10, -11, -4)
+
+[node name="Spawns" type="Node2D" parent="."]
+
+[node name="default" type="Marker2D" parent="Spawns"]
+position = Vector2(280, 120)
+
+[node name="from_farm" type="Marker2D" parent="Spawns"]
+position = Vector2(288, 120)
+
+[node name="ToFarm" type="Area2D" parent="."]
+; Path back east to the farm.
+position = Vector2(312, 120)
+script = ExtResource("2")
+target_scene = "res://scenes/World/Farm.tscn"
+target_spawn = "from_trail"
+
+[node name="ToFarmShape" type="CollisionShape2D" parent="ToFarm"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="ToFarmSprite" type="Polygon2D" parent="ToFarm"]
+color = Color(0.62, 0.58, 0.45, 1)
+polygon = PackedVector2Array(-8, -12, 8, -12, 8, 12, -8, 12)

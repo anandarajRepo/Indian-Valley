@@ -1,12 +1,17 @@
 extends CanvasLayer
-## Popup.gd — the single modal overlay for dialogue, shop, inventory, the day
-## summary, and the pause menu. Only one modal is ever open at a time.
+## Popup.gd — the single modal overlay for dialogue, choices, shop, inventory,
+## the journal, fishing, the Panchayat Hall board, the day summary, and the
+## pause menu. Only one modal is ever open at a time.
 ##
 ## Lives as a persistent child of Main (layer 20, above the HUD). Opening any
 ## modal pauses the game clock; closing resumes it (while in a playable world).
 ## All UI is built procedurally — no art required for the vertical slice.
 
-enum Mode { NONE, DIALOGUE, SHOP, INVENTORY, SUMMARY, PAUSE }
+const JournalView    = preload("res://scripts/ui/JournalView.gd")
+const HallView       = preload("res://scripts/ui/HallView.gd")
+const FishingMinigame = preload("res://scripts/ui/FishingMinigame.gd")
+
+enum Mode { NONE, DIALOGUE, SHOP, INVENTORY, SUMMARY, PAUSE, CHOICE, FISHING, JOURNAL, HALL }
 
 var _mode: int = Mode.NONE
 
@@ -23,11 +28,15 @@ var _dlg_on_done: Callable = Callable()
 var _dlg_label:   Label    = null
 var _input_enabled: bool   = false   ## Guards against the opening keypress advancing.
 
-# --- Theme -----------------------------------------------------------------
-const COL_TEXT:   Color = Color(0.95, 0.88, 0.70)
-const COL_PANEL:  Color = Color(0.15, 0.10, 0.05, 0.94)
-const COL_DIM:    Color = Color(0.0, 0.0, 0.0, 0.45)
-const COL_ACCENT: Color = Color(0.8, 0.6, 0.2, 1.0)
+# --- Views hosted in _content ---------------------------------------------
+var _journal: Control = null
+var _fishing: Control = null
+
+# --- Theme (shared with the other views via UIKit) --------------------------
+const COL_TEXT:   Color = UIKit.COL_TEXT
+const COL_PANEL:  Color = UIKit.COL_PANEL
+const COL_DIM:    Color = UIKit.COL_DIM
+const COL_ACCENT: Color = UIKit.COL_ACCENT
 
 # ---------------------------------------------------------------------------
 # Lifecycle
@@ -59,6 +68,8 @@ func _build_root() -> void:
 func _hide_root() -> void:
 	_root.visible = false
 	_mode = Mode.NONE
+	_journal = null
+	_fishing = null
 
 
 func _clear_content() -> void:
@@ -83,6 +94,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
+	# Journal toggle mirrors the inventory toggle.
+	if event.is_action_pressed("journal"):
+		if _mode == Mode.JOURNAL:
+			close_all()
+			get_viewport().set_input_as_handled()
+			return
+		elif _mode == Mode.NONE and gm != null and gm.in_game:
+			open_journal()
+			get_viewport().set_input_as_handled()
+			return
+
 	# Esc closes any open modal, or opens the pause menu from gameplay.
 	if event.is_action_pressed("ui_cancel"):
 		if _mode != Mode.NONE:
@@ -95,6 +117,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _mode == Mode.NONE or not _input_enabled:
 		return
 
+	# Journal: Q / E flip between tabs.
+	if _mode == Mode.JOURNAL and _journal != null:
+		if event.is_action_pressed("hotbar_prev") or event.is_action_pressed("hotbar_next"):
+			_journal.cycle(-1 if event.is_action_pressed("hotbar_prev") else 1)
+			get_viewport().set_input_as_handled()
+			return
+
 	# Advance / dismiss on interact, use_tool, or accept.
 	if event.is_action_pressed("interact") \
 			or event.is_action_pressed("use_tool") \
@@ -106,6 +135,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			Mode.SUMMARY:
 				close_all()
 				get_viewport().set_input_as_handled()
+			Mode.FISHING:
+				if _fishing:
+					_fishing.press()
+				get_viewport().set_input_as_handled()
+			Mode.CHOICE:
+				# Z / X pick the focused option (Enter is handled by the button).
+				var focused := get_viewport().gui_get_focus_owner()
+				if focused is Button and not event.is_action_pressed("ui_accept"):
+					focused.emit_signal("pressed")
+					get_viewport().set_input_as_handled()
 
 # ---------------------------------------------------------------------------
 # Open / close
@@ -191,6 +230,80 @@ func _advance_dialogue() -> void:
 		_show_dialogue_line()
 
 # ---------------------------------------------------------------------------
+# Choice (a prompt with a few buttons)
+# ---------------------------------------------------------------------------
+
+func show_choice(speaker: String, prompt: String, options: Array, on_choice: Callable) -> void:
+	## Ask the player to pick one of `options`. `on_choice` receives the index
+	## after the modal has closed (Esc cancels without calling it).
+	_open(Mode.CHOICE)
+	var panel := _make_panel(Vector2(1000, 170), Vector2(140, 525))
+	_content.add_child(panel)
+	var box := _make_vbox(panel, 10)
+
+	var name_label := _make_label(speaker, 18)
+	name_label.add_theme_color_override("font_color", COL_ACCENT)
+	box.add_child(name_label)
+
+	var text := _make_label(prompt, 15)
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.custom_minimum_size = Vector2(960, 0)
+	box.add_child(text)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	box.add_child(row)
+	var first: Button = null
+	for i in range(options.size()):
+		var b := _make_button(str(options[i]))
+		b.custom_minimum_size = Vector2(180, 34)
+		var idx := i
+		b.pressed.connect(func():
+			close_all()
+			if on_choice.is_valid():
+				on_choice.call(idx)
+		)
+		row.add_child(b)
+		if first == null:
+			first = b
+	if first:
+		first.grab_focus()
+
+# ---------------------------------------------------------------------------
+# Journal, fishing and the Panchayat Hall (views live in their own scripts)
+# ---------------------------------------------------------------------------
+
+func open_journal() -> void:
+	if _mode != Mode.NONE:
+		return
+	_open(Mode.JOURNAL)
+	_journal = JournalView.new()
+	_content.add_child(_journal)
+
+
+func open_fishing(location: String) -> void:
+	if _mode != Mode.NONE:
+		return
+	_open(Mode.FISHING)
+	_fishing = FishingMinigame.new()
+	_fishing.location = location
+	_fishing.finished.connect(func(fish_id: String):
+		close_all()
+		if GameManager.instance:
+			GameManager.instance.on_fishing_finished(fish_id)
+	)
+	_content.add_child(_fishing)
+
+
+func open_hall() -> void:
+	if _mode != Mode.NONE:
+		return
+	_open(Mode.HALL)
+	var view := HallView.new()
+	view.close_requested.connect(close_all)
+	_content.add_child(view)
+
+# ---------------------------------------------------------------------------
 # Shop
 # ---------------------------------------------------------------------------
 
@@ -210,7 +323,7 @@ func _shop_stock() -> Array:
 			if not seed_item.is_empty() and not stock.has(seed_id):
 				stock.append(seed_id)
 	# A few always-available staples.
-	for staple in ["idli", "dosa"]:
+	for staple in ["idli", "dosa", "banana_leaf_rice"]:
 		if not ItemDB.get_item(staple).is_empty():
 			stock.append(staple)
 	return stock
@@ -351,32 +464,86 @@ func _build_inv_slot(slot_data) -> Control:
 # Day summary
 # ---------------------------------------------------------------------------
 
-func show_day_summary(earnings: int) -> void:
+func show_day_summary(report: Dictionary) -> void:
+	## `report` comes from GameManager.on_overnight(): earnings, weather,
+	## season / year changes, withered crops, festival and birthdays.
 	_open(Mode.SUMMARY)
 	# on_overnight resumed the clock via end_day(); keep it paused for the summary.
 	GameClock.pause()
 
-	var panel := _make_panel(Vector2(560, 300), Vector2(360, 210))
+	var review: Dictionary = report.get("year_review", {})
+	var height := 470 if review.is_empty() else 640
+	var panel := _make_panel(Vector2(620, height), Vector2(330, (720 - height) / 2))
 	_content.add_child(panel)
 
-	var box := _make_vbox(panel, 14)
+	var box := _make_vbox(panel, 8)
 
-	var title := _make_label("You slept until morning", 20)
+	var title_text := "You slept until morning"
+	if report.get("new_year", false):
+		title_text = "Happy Ugadi — a new year begins!"
+	elif report.get("new_season", false):
+		title_text = "%s has arrived" % GameClock.get_season_name()
+	var title := _make_label(title_text, 20)
 	title.add_theme_color_override("font_color", COL_ACCENT)
 	box.add_child(title)
 
 	box.add_child(_make_label(GameClock.get_date_string(), 15))
+	box.add_child(_make_label("Weather: %s   ·   Tomorrow: %s" % [
+		Weather.get_display_name(report.get("weather", Weather.today)),
+		Weather.get_display_name(report.get("forecast", Weather.tomorrow))], 13))
 
+	var earnings := int(report.get("earnings", 0))
 	if earnings > 0:
 		box.add_child(_make_label("Overnight sales:  +₹%d" % earnings, 15))
 	else:
 		box.add_child(_make_label("Nothing was shipped last night.", 13))
-
 	box.add_child(_make_label("Gold:  ₹%d" % GameData.gold, 15))
+
+	var notes: Array = []
+	if report.get("rain_watered", false):
+		notes.append("The rain watered your crops.")
+	var withered := int(report.get("withered", 0))
+	if withered > 0:
+		notes.append("%d out-of-season crop%s withered. Clear them with the hoe or sickle." % [withered, "" if withered == 1 else "s"])
+	if report.get("new_season", false):
+		notes.append("Kavitha has new %s seeds in stock." % GameClock.get_season_name())
+	var festival: Dictionary = report.get("festival", {})
+	if not festival.is_empty():
+		notes.append("Today is %s! Head to the town square." % festival.get("name", "a festival"))
+	for bday in report.get("birthdays", []):
+		notes.append("It's %s's birthday today." % bday)
+	for note in notes:
+		var l := _make_label("•  " + note, 13)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(570, 0)
+		box.add_child(l)
+
+	if not review.is_empty():
+		box.add_child(_build_year_review(review))
 
 	var cont := _make_button("Start the day  (Z / Enter)")
 	cont.pressed.connect(close_all)
 	box.add_child(cont)
+
+
+func _build_year_review(review: Dictionary) -> Control:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	var head := _make_label("Year %d complete — your story so far" % int(review.get("year", 1)), 16)
+	head.add_theme_color_override("font_color", COL_ACCENT)
+	col.add_child(head)
+	var hall_line := "Panchayat Hall restored!" if review.get("restored", false) \
+		else "Hall offerings: %d / %d" % [int(review.get("bundles_done", 0)), int(review.get("bundles_total", 0))]
+	for line in [
+		"Earned ₹%d from shipping" % int(review.get("earned", 0)),
+		"Harvested %d crops · caught %d fish · foraged %d finds" % [
+			int(review.get("harvested", 0)), int(review.get("fish", 0)), int(review.get("foraged", 0))],
+		"Entered %d festivals · %d close friends (4+ hearts)" % [
+			int(review.get("festivals", 0)), int(review.get("friends", 0))],
+		hall_line,
+	]:
+		col.add_child(_make_label(line, 13))
+	return col
 
 # ---------------------------------------------------------------------------
 # Pause menu
@@ -385,7 +552,7 @@ func show_day_summary(earnings: int) -> void:
 func open_pause_menu() -> void:
 	_open(Mode.PAUSE)
 
-	var panel := _make_panel(Vector2(360, 320), Vector2(460, 200))
+	var panel := _make_panel(Vector2(360, 370), Vector2(460, 175))
 	_content.add_child(panel)
 
 	var box := _make_vbox(panel, 14)
@@ -397,6 +564,13 @@ func open_pause_menu() -> void:
 	var resume_btn := _make_button("Resume")
 	resume_btn.pressed.connect(close_all)
 	box.add_child(resume_btn)
+
+	var journal_btn := _make_button("Journal  (J)")
+	journal_btn.pressed.connect(func():
+		close_all()
+		open_journal()
+	)
+	box.add_child(journal_btn)
 
 	var save_btn := _make_button("Save Game")
 	save_btn.pressed.connect(func():
@@ -425,67 +599,20 @@ func _active_inventory() -> Node:
 
 
 func _make_panel(size: Vector2, pos: Vector2) -> Panel:
-	var p := Panel.new()
-	p.custom_minimum_size = size
-	p.size = size
-	p.position = pos
-	var style := StyleBoxFlat.new()
-	style.bg_color = COL_PANEL
-	style.border_color = COL_ACCENT
-	style.border_width_left = 2
-	style.border_width_right = 2
-	style.border_width_top = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	p.add_theme_stylebox_override("panel", style)
-	return p
+	return UIKit.panel(size, pos)
 
 
 func _make_vbox(parent: Control, separation: int) -> VBoxContainer:
-	## A VBox filling the parent panel with a comfortable margin.
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_bottom", 16)
-	parent.add_child(margin)
-
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", separation)
-	margin.add_child(box)
-	return box
+	return UIKit.vbox(parent, separation)
 
 
 func _make_label(text: String, font_size: int) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", font_size)
-	l.add_theme_color_override("font_color", COL_TEXT)
-	return l
+	return UIKit.label(text, font_size)
 
 
 func _make_button(text: String) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.add_theme_font_size_override("font_size", 14)
-	b.custom_minimum_size = Vector2(0, 34)
-	return b
+	return UIKit.button(text)
 
 
 func _slot_style() -> StyleBoxFlat:
-	var s := StyleBoxFlat.new()
-	s.bg_color = Color(0.20, 0.15, 0.10, 0.9)
-	s.border_color = Color(0.4, 0.3, 0.15, 1.0)
-	s.border_width_left = 1
-	s.border_width_right = 1
-	s.border_width_top = 1
-	s.border_width_bottom = 1
-	s.corner_radius_top_left = 4
-	s.corner_radius_top_right = 4
-	s.corner_radius_bottom_left = 4
-	s.corner_radius_bottom_right = 4
-	return s
+	return UIKit.slot_style()

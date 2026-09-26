@@ -2,7 +2,7 @@ extends CanvasLayer
 ## HUD.gd — In-game heads-up display.
 ##
 ## Displays:
-##   - Clock (top-right): time + day + season + year
+##   - Clock (top-right): time + day + season + year, weather and today's event
 ##   - Energy bar (top-left): coloured progress bar
 ##   - Gold display (bottom-left): ₹ amount
 ##   - Hotbar (bottom-centre): 5 item slots with item icon/count
@@ -16,6 +16,7 @@ signal hotbar_slot_clicked(index: int)
 
 var clock_label:    Label         = null
 var date_label:     Label         = null
+var weather_label:  Label         = null
 var energy_bar:     ProgressBar   = null
 var energy_label:   Label         = null
 var gold_label:     Label         = null
@@ -58,7 +59,7 @@ func _process(delta: float) -> void:
 
 func _build_hud() -> void:
 	## ---- CLOCK (top-right) ----
-	var clock_panel = _panel(Vector2(200, 56), Vector2(1080, 8))
+	var clock_panel = _panel(Vector2(220, 74), Vector2(1052, 8))
 	add_child(clock_panel)
 
 	clock_label = _label("6:00 AM", 14)
@@ -68,6 +69,10 @@ func _build_hud() -> void:
 	date_label = _label("Day 1, Kharif — Year 1", 10)
 	date_label.position = Vector2(8, 24)
 	clock_panel.add_child(date_label)
+
+	weather_label = _label("Sunny", 10)
+	weather_label.position = Vector2(8, 44)
+	clock_panel.add_child(weather_label)
 
 	## ---- ENERGY (top-left) ----
 	var energy_panel = _panel(Vector2(160, 36), Vector2(8, 8))
@@ -176,6 +181,14 @@ func _update_clock() -> void:
 		clock_label.text = GameClock.get_time_string()
 	if date_label:
 		date_label.text  = GameClock.get_date_string()
+	if weather_label:
+		var text := Weather.get_display_name()
+		var festival := Calendar.festival_today()
+		if not festival.is_empty():
+			text += "  ·  " + festival.get("name", "Festival")
+		elif not Relationships.birthdays_today().is_empty():
+			text += "  ·  %s's birthday" % Relationships.birthdays_today()[0]
+		weather_label.text = text
 
 
 func _on_time_changed(_hour: int, _minute: int) -> void:

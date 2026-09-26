@@ -37,7 +37,7 @@ func _build() -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 
-	var tagline := _label("A season in Viralpadi Valley", 16)
+	var tagline := _label("A year in Viralpadi Valley", 16)
 	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(tagline)
 

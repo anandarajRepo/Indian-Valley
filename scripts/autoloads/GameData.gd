@@ -65,6 +65,22 @@ var _skill_xp: Dictionary = {
 var shipping_chest: Array = []
 
 # ---------------------------------------------------------------------------
+# Lifetime stats (shown in the journal and the year-end review)
+# ---------------------------------------------------------------------------
+
+const DEFAULT_STATS: Dictionary = {
+	"total_earned":       0,
+	"crops_harvested":    0,
+	"fish_caught":        0,
+	"items_foraged":      0,
+	"gifts_given":        0,
+	"festivals_attended": 0,
+	"days_played":        0,
+}
+
+var stats: Dictionary = DEFAULT_STATS.duplicate()
+
+# ---------------------------------------------------------------------------
 # Godot lifecycle
 # ---------------------------------------------------------------------------
 
@@ -155,6 +171,22 @@ func _level_up_skill(skill: String) -> void:
 	print("[GameData] Levelled up %s to %d!" % [skill, get_skill_level(skill)])
 
 
+func get_skill_xp(skill: String) -> int:
+	return int(_skill_xp.get(skill, 0))
+
+
+# ---------------------------------------------------------------------------
+# Stats
+# ---------------------------------------------------------------------------
+
+func record_stat(stat: String, amount: int = 1) -> void:
+	stats[stat] = int(stats.get(stat, 0)) + amount
+
+
+func get_stat(stat: String) -> int:
+	return int(stats.get(stat, 0))
+
+
 # ---------------------------------------------------------------------------
 # Shipping chest
 # ---------------------------------------------------------------------------
@@ -178,6 +210,7 @@ func process_shipping() -> int:
 	last_earnings = total_earned
 	if total_earned > 0:
 		add_gold(total_earned)
+		record_stat("total_earned", total_earned)
 		print("[GameData] Overnight sales: +%d gold" % total_earned)
 	return total_earned
 
@@ -190,6 +223,7 @@ func _on_sleep_triggered() -> void:
 	## Overnight orchestration. Runs whenever the player sleeps or passes out.
 	var earnings := process_shipping()
 	restore_energy()
+	record_stat("days_played")
 	emit_signal("day_ended_processing")
 
 	# Advance the calendar to the next morning.
@@ -219,6 +253,7 @@ func reset_to_new_game() -> void:
 	skill_combat   = 0
 	_skill_xp      = {"farming": 0, "mining": 0, "foraging": 0, "fishing": 0, "combat": 0}
 	shipping_chest = []
+	stats          = DEFAULT_STATS.duplicate()
 	emit_signal("gold_changed", gold)
 	emit_signal("energy_changed", energy_current, energy_max)
 
@@ -242,6 +277,7 @@ func to_dict() -> Dictionary:
 		"skill_combat":   skill_combat,
 		"skill_xp":       _skill_xp,
 		"shipping_chest": shipping_chest,
+		"stats":          stats,
 	}
 
 
@@ -259,5 +295,9 @@ func from_dict(d: Dictionary) -> void:
 	skill_combat   = d.get("skill_combat",   0)
 	_skill_xp      = d.get("skill_xp",       {"farming":0,"mining":0,"foraging":0,"fishing":0,"combat":0})
 	shipping_chest = d.get("shipping_chest", [])
+	stats          = DEFAULT_STATS.duplicate()
+	var saved_stats: Dictionary = d.get("stats", {})
+	for key in saved_stats:
+		stats[key] = int(saved_stats[key])   # JSON numbers load as floats
 	emit_signal("gold_changed", gold)
 	emit_signal("energy_changed", energy_current, energy_max)

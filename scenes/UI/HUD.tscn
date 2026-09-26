@@ -5,5 +5,5 @@
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1")
 layer = 10
-## All HUD nodes are created procedurally in HUD.gd _ready()
-## so this scene is intentionally minimal.
+; All HUD nodes are created procedurally in HUD.gd _ready()
+; so this scene is intentionally minimal.
