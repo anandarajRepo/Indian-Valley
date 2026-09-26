@@ -1,0 +1,82 @@
+{
+  "bundles": [
+    {
+      "id": "ugadi_blossoms",
+      "name": "Ugadi Blossoms",
+      "hint": "Flowers of the New Year.",
+      "items": [
+        { "item_id": "jasmine_flower",  "quantity": 5 },
+        { "item_id": "marigold_flower", "quantity": 5 },
+        { "item_id": "sunflower",       "quantity": 3 }
+      ],
+      "reward": { "gold": 400, "items": [{ "item_id": "pepper_vine", "quantity": 5 }], "text": "₹400 and 5 Pepper Vines" }
+    },
+    {
+      "id": "monsoon_granary",
+      "name": "Monsoon Granary",
+      "hint": "The staples of a Kharif field.",
+      "items": [
+        { "item_id": "paddy_grain",   "quantity": 10 },
+        { "item_id": "turmeric_root", "quantity": 3 },
+        { "item_id": "red_chilli",    "quantity": 5 }
+      ],
+      "reward": { "energy_max": 20, "text": "+20 max energy (Paati's ghee recipe)" }
+    },
+    {
+      "id": "rabi_pantry",
+      "name": "Rabi Pantry",
+      "hint": "Pulses and greens for the cool season.",
+      "items": [
+        { "item_id": "toor_dal",        "quantity": 5 },
+        { "item_id": "chickpea",        "quantity": 5 },
+        { "item_id": "mustard_greens",  "quantity": 5 }
+      ],
+      "reward": { "gold": 1000, "text": "₹1000" }
+    },
+    {
+      "id": "winter_kitchen",
+      "name": "Winter Kitchen",
+      "hint": "What grows when the valley is cold.",
+      "items": [
+        { "item_id": "methi_leaves", "quantity": 5 },
+        { "item_id": "radish",       "quantity": 5 },
+        { "item_id": "garlic",       "quantity": 3 }
+      ],
+      "reward": { "gold": 300, "items": [{ "item_id": "coconut_sapling", "quantity": 2 }], "text": "₹300 and 2 Coconut Saplings" }
+    },
+    {
+      "id": "ghats_gifts",
+      "name": "Gifts of the Ghats",
+      "hint": "One find from the trail in every season.",
+      "items": [
+        { "item_id": "raw_mango",     "quantity": 1 },
+        { "item_id": "wild_mushroom", "quantity": 1 },
+        { "item_id": "amla",          "quantity": 1 },
+        { "item_id": "ber",           "quantity": 1 }
+      ],
+      "reward": { "gold": 800, "text": "₹800" }
+    },
+    {
+      "id": "river_catch",
+      "name": "River & Tank",
+      "hint": "Fish from the pond and the Ghats river.",
+      "items": [
+        { "item_id": "rohu",     "quantity": 1 },
+        { "item_id": "catla",    "quantity": 1 },
+        { "item_id": "murrel",   "quantity": 1 },
+        { "item_id": "karimeen", "quantity": 1 }
+      ],
+      "reward": { "gold": 800, "text": "₹800" }
+    }
+  ],
+  "completion": {
+    "energy_max": 30,
+    "lines": [
+      "The Hall's lamps flicker to life on their own.",
+      "A warm wind rolls down from the Ghats, carrying the scent of jasmine and wet earth.",
+      "Vanam Thay: \"Child of Viralpadi. You remembered the valley, and so the valley remembers you.\"",
+      "Vanam Thay: \"The land is awake again. Tend it well.\"",
+      "(The Panchayat Hall is restored! Your max energy rose by 30.)"
+    ]
+  }
+}

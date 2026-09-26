@@ -1,7 +1,8 @@
 extends WorldBase
 ## Farm.gd — the player's home base.
 ##
-## Renders and drives the farm plot (till → plant → water → harvest). The
+## Renders and drives the farm plot (till → plant → water → harvest), plus the
+## fishing pond in the south-west corner. The
 ## authoritative tile state lives in GameManager.farm_tiles so it survives
 ## trips to town and overnight growth (simulated by the manager). This scene
 ## reads that state and paints the TileMap accordingly.
@@ -29,6 +30,7 @@ const TILE_CROP_YOUNG:   Vector2i = Vector2i(6, 0)
 const TILE_CROP_MID:     Vector2i = Vector2i(7, 0)
 const TILE_CROP_MATURE:  Vector2i = Vector2i(8, 0)
 const TILE_CROP_READY:   Vector2i = Vector2i(9, 0)
+const TILE_CROP_DEAD:    Vector2i = Vector2i(10, 0)
 
 ## Placeholder tile colours (no art yet — a solid-colour atlas is generated).
 const PLACEHOLDER_COLORS: Array = [
@@ -42,6 +44,7 @@ const PLACEHOLDER_COLORS: Array = [
 	Color(0.35, 0.68, 0.28),   # 7 crop mid
 	Color(0.22, 0.52, 0.20),   # 8 crop mature
 	Color(0.90, 0.78, 0.28),   # 9 crop ready
+	Color(0.45, 0.33, 0.20),   # 10 withered crop
 ]
 const TILE_PX: int = 16
 
@@ -55,6 +58,9 @@ const PLOT_W: int = 10
 const PLOT_H: int = 8
 const MAP_W:  int = 20
 const MAP_H:  int = 15
+
+## Fishing pond (tile coords)
+const POND: Rect2i = Rect2i(1, 10, 3, 4)
 
 # ---------------------------------------------------------------------------
 # Nodes
@@ -146,6 +152,10 @@ func _render_all() -> void:
 		for x in range(PLOT_X, PLOT_X + PLOT_W):
 			tilemap.set_cell(LAYER_GROUND, Vector2i(x, y), TILESET_SOURCE, TILE_SOIL_DRY)
 
+	for y in range(POND.position.y, POND.end.y):
+		for x in range(POND.position.x, POND.end.x):
+			tilemap.set_cell(LAYER_GROUND, Vector2i(x, y), TILESET_SOURCE, TILE_WATER)
+
 	for key in _tile_data:
 		_render_tile(_pos_from_key(key))
 
@@ -168,7 +178,9 @@ func _render_tile(tile_pos: Vector2i) -> void:
 	tilemap.set_cell(LAYER_GROUND, tile_pos, TILESET_SOURCE, ground)
 
 	# Crop layer.
-	if state == "planted":
+	if state == "dead":
+		tilemap.set_cell(LAYER_CROPS, tile_pos, TILESET_SOURCE, TILE_CROP_DEAD)
+	elif state == "planted":
 		tilemap.set_cell(LAYER_CROPS, tile_pos, TILESET_SOURCE, _crop_stage_tile(data))
 	else:
 		tilemap.erase_cell(LAYER_CROPS, tile_pos)
@@ -202,6 +214,8 @@ func _till_soil(tile_pos: Vector2i) -> void:
 		return
 	var key = _key(tile_pos)
 	if _tile_data.has(key):
+		if _tile_data[key].get("state", "") == "dead":
+			_clear_dead(tile_pos)
 		return   ## Already tilled / planted.
 	_tile_data[key] = {
 		"state": "tilled", "crop_id": "",
@@ -261,6 +275,9 @@ func _harvest_tile(tile_pos: Vector2i) -> void:
 	if not _tile_data.has(key):
 		return
 	var data = _tile_data[key]
+	if data.get("state", "") == "dead":
+		_clear_dead(tile_pos)
+		return
 	if data.get("state", "") != "planted":
 		return
 
@@ -274,8 +291,11 @@ func _harvest_tile(tile_pos: Vector2i) -> void:
 
 	var product_id = crop.get("product_id", "")
 	if product_id != "" and player_instance and player_instance.inventory:
-		player_instance.inventory.add_item(product_id, 1)
+		if not player_instance.inventory.add_item(product_id, 1):
+			_notify("Inventory full")
+			return
 	GameData.add_skill_xp("farming", 5)
+	GameData.record_stat("crops_harvested")
 	_notify("Harvested %s" % crop.get("name", "crop"))
 
 	if crop.get("regrows", false):
@@ -286,6 +306,20 @@ func _harvest_tile(tile_pos: Vector2i) -> void:
 		_tile_data.erase(key)
 
 	_render_tile(tile_pos)
+
+func _clear_dead(tile_pos: Vector2i) -> void:
+	## Pull up a withered crop, leaving tilled soil behind.
+	var data: Dictionary = _tile_data[_key(tile_pos)]
+	data["state"]    = "tilled"
+	data["crop_id"]  = ""
+	data["progress"] = 0
+	data["stage"]    = 0
+	_render_tile(tile_pos)
+	_notify("Cleared the withered crop")
+
+
+func _water_location(tile_pos: Vector2i) -> String:
+	return "pond" if POND.has_point(tile_pos) else ""
 
 # ---------------------------------------------------------------------------
 # Utilities

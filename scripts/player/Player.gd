@@ -5,6 +5,7 @@ extends CharacterBody2D
 ##   - 4-directional movement (WASD / arrow keys)
 ##   - Animation state machine (idle / walk, 4 directions)
 ##   - Tool use (hoe, watering can, sickle, pickaxe, fishing rod)
+##   - Eating food / edible forage from the hotbar to restore energy
 ##   - Facing direction for tool placement
 ##   - Interaction with world objects (chests, NPCs, signs)
 
@@ -150,13 +151,16 @@ func _use_tool() -> void:
 		return
 
 	var category = item_data.get("category", "")
+	if item_data.has("energy_restore") and category in ["food", "forage"]:
+		_eat(held_item["item_id"], item_data)
+		return
 	if category != "tool" and category != "seed":
 		return
 
 	# Check energy
 	var energy_cost = item_data.get("energy_cost", 1)
 	if not GameData.spend_energy(energy_cost):
-		# TODO: show "too tired" popup
+		_notify("You're too tired...")
 		return
 
 	# Get the tile in front of the player
@@ -165,6 +169,22 @@ func _use_tool() -> void:
 
 	# Play use animation (swing / water)
 	_play_tool_animation(item_data.get("tool_type", ""))
+
+
+func _eat(item_id: String, item_data: Dictionary) -> void:
+	if GameData.energy_current >= GameData.energy_max:
+		_notify("You're not hungry right now")
+		return
+	if not inventory.remove_item(item_id, 1):
+		return
+	var amount := int(item_data.get("energy_restore", 0))
+	GameData.restore_energy(amount)
+	_notify("Ate %s  (+%d energy)" % [item_data.get("name", item_id), amount])
+
+
+func _notify(message: String) -> void:
+	if GameManager.instance:
+		GameManager.instance.show_notification(message)
 
 
 func _get_facing_tile() -> Vector2i:

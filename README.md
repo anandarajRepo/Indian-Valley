@@ -39,7 +39,8 @@ Indian-Valley/
 │   ├── UI/           # HUD, menus, inventory
 │   └── Systems/      # Farming tiles, crops, NPCs
 ├── scripts/          # GDScript source files
-│   ├── autoloads/    # Singletons (GameClock, GameData, SaveManager, ItemDB)
+│   ├── autoloads/    # Singletons (GameClock, GameData, SaveManager, ItemDB,
+│   │                 #   Calendar, Relationships, Weather)
 │   ├── player/       # Player controller, tools
 │   ├── world/        # Farm, tilemap, environment
 │   ├── ui/           # HUD, inventory, dialogue
@@ -48,7 +49,8 @@ Indian-Valley/
 │   ├── sprites/
 │   ├── tilesets/
 │   └── audio/
-└── data/             # JSON data files (crops, NPCs, items, recipes)
+├── data/             # JSON data files (items, crops, npcs, festivals, bundles)
+└── tests/            # Headless smoke test (SmokeTest.tscn)
 ```
 
 ## Getting Started
@@ -64,7 +66,7 @@ Indian-Valley/
 |---|---|---|
 | 0 — Foundations | Core loop proof of concept | ✅ Complete |
 | 1 — Vertical Slice | Playable Spring season | ✅ Complete |
-| 2 — Alpha | Full year one | ⏳ Planned |
+| 2 — Alpha | Full year one | ✅ Complete |
 | 3 — Beta | Content-complete, itch.io demo | ⏳ Planned |
 | 4 — Polish | Release-ready | ⏳ Planned |
 | 5 — Launch | Steam Early Access | ⏳ Planned |
@@ -107,6 +109,80 @@ begins there and rolls Ugadi → Kharif → Rabi → Winter → Ugadi.
 
 Sleep on the farm (bed or **F**), or when energy runs out, to sell the shipping
 chest's contents overnight, grow your crops, and start the next day.
+
+## Phase 2 — Alpha (Full Year One)
+
+A complete first year is now playable: all four seasons, weather, festivals,
+villager friendships, foraging, fishing and the Panchayat Hall restoration.
+
+**Seasons & farming**
+
+- **23 crops across the whole year** — new Rabi (chickpea, mustard) and Winter
+  (methi, radish, hill carrot, garlic) crops join the Ugadi and Kharif rosters.
+  Kavitha's store stocks whatever is in season.
+- **Season change** — on the first morning of a new season, planted crops that
+  can't grow in it **wither**. Clear them with the hoe or sickle.
+- **Year rollover** — Winter 28 → Ugadi 1 starts Year 2 with a
+  "story so far" review (earnings, harvests, fish, forage, festivals, friends,
+  Hall progress).
+
+**Weather** — each day is Sunny, Cloudy, Rain or a Monsoon storm, rolled from
+per-season odds (Kharif is the monsoon). Rain waters every tilled tile for you.
+The HUD shows today's weather; the journal and day summary show tomorrow's
+forecast. Evenings darken and rainy days get falling rain on screen.
+
+**Festivals** — one per season in the town square: **Ugadi Mela** (Ugadi 14),
+**Aadi Perukku** (Kharif 16), **Deepavali** (Rabi 20) and **Pongal**
+(Winter 14). Hold a crop, forage find or fish and bring it to the offering
+stall for gold, a festival treat and friendship with the whole village.
+
+**Villagers & friendship** — six villagers with seasonal, weather, festival
+and heart-level dialogue: Kavitha (store), Murugan (farmer), Devi (herbalist),
+Ravi (fisherman), Anjali (teacher) and Meenakshi Paati (elder). Chat once a
+day and give one gift a day — each villager loves, likes and dislikes
+different things, and birthday gifts count ×8. Up to 10 hearts each.
+
+**Ghats Trail** — a new area west of the farm. Seasonal forageables (neem
+flowers, raw mango, wild mushrooms, amla, wild honey, ber…) respawn every
+morning.
+
+**Fishing** — Ravi gives you a rod when you first meet. Face the farm pond or
+the Ghats river and use it: wait for the bite, then reel in when the marker
+sweeps through the green zone. 8 fish, varying by season, location and
+weather — including the legendary Golden Mahseer.
+
+**Eating** — select food or edible forage in the hotbar and use it to restore
+energy.
+
+**Panchayat Hall** — six offering baskets (seasonal crops, forage, fish) in
+the town hall. Each completed basket gives a reward; fill them all to restore
+the Hall and bring back the Vanam Thay.
+
+**Journal (J)** — a calendar of festivals and birthdays with the forecast,
+villager hearts and gift status, and skills plus lifetime stats.
+
+**Saves** — save format v2 adds weather, friendships, festivals, forage, the
+Hall and stats. Phase 1 (v1) saves load with sensible defaults.
+
+**New controls**
+
+| Action | Key(s) |
+|---|---|
+| Journal (calendar / villagers / skills) | J |
+| Switch journal tab | Q / E |
+| Eat food, cast fishing rod | Left-click or X (with the item selected) |
+| Reel in a fish | Z / X / Enter |
+
+### Running the smoke test
+
+```
+godot --headless res://tests/SmokeTest.tscn
+```
+
+It plays through a new game, rain and growth, a season change, fishing,
+foraging, villagers, a festival, the Hall, save/load, v1-save migration and the
+year rollover, and exits non-zero on any failure. It uses save slot 2 and
+restores whatever was there.
 
 ## Setting & Lore
 

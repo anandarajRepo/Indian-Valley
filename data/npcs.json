@@ -1,0 +1,173 @@
+{
+  "npcs": [
+    {
+      "id": "kavitha",
+      "name": "Kavitha",
+      "role": "General Store owner",
+      "birthday": { "season": "rabi", "day": 9 },
+      "loves": ["jasmine_flower", "mysore_pak", "wild_honey"],
+      "likes": ["marigold_flower", "sunflower", "watermelon", "raw_mango", "payasam"],
+      "dislikes": ["garlic", "tilapia"],
+      "dialogue": {
+        "first_meet": ["Vanakkam! You must be the grandchild from the old farm. I'm Kavitha — I run the store."],
+        "default": [
+          "Fresh seeds for the season, just in. Take a look at what's growing well right now.",
+          "If it's in season, I stock it. If it's not, even I can't make it grow!",
+          "My cousin in the city buys whatever you ship. He says the valley's produce is the best he's tasted."
+        ],
+        "ugadi": ["Ugadi means new beginnings. A good time to plant something you've never grown before."],
+        "kharif": ["The monsoon keeps everyone busy. Paddy seed has been flying off my shelves!"],
+        "rabi": ["Rabi is my favourite — cool mornings, mustard in bloom, and everyone is in a good mood."],
+        "winter": ["Winter greens sell quickly. Methi and radish grow fast in this cold."],
+        "rain": ["Rain again! Good for your fields, bad for my footfall."],
+        "hearts_4": ["You know, I've started setting aside the best seeds for you before the others get here."],
+        "hearts_8": ["Some days I think this valley only woke up again because you came back. Don't tell Murugan I said that."],
+        "birthday": ["You remembered my birthday? Nobody remembers the shopkeeper's birthday!"],
+        "festival": ["Isn't the square beautiful today? I closed the store early — even I need a festival."],
+        "gift_loved": ["{item}! Oh, you shouldn't have — this is exactly what I love."],
+        "gift_disliked": ["Ah... {item}. I'll, er, find a place for it on a back shelf."]
+      }
+    },
+    {
+      "id": "murugan",
+      "name": "Murugan",
+      "role": "Veteran farmer",
+      "birthday": { "season": "kharif", "day": 5 },
+      "loves": ["red_chilli", "paddy_grain", "sakkarai_pongal"],
+      "likes": ["okra", "brinjal", "toor_dal", "turmeric_root", "rohu"],
+      "dislikes": ["marigold_flower", "neem_flowers"],
+      "dialogue": {
+        "first_meet": ["Ah, the young one from the old farm! Your grandparents grew the sweetest watermelon in the valley."],
+        "default": [
+          "Water your crops every day, or they'll just sit there sulking.",
+          "Ship what you grow in the chest by the plot — it sells overnight.",
+          "When the season turns, anything that can't take the new weather withers. Plan your planting!"
+        ],
+        "ugadi": ["Okra and amaranth are forgiving. Start small, learn the soil."],
+        "kharif": ["Monsoon! Rain waters the fields for you — the best time of the year for paddy."],
+        "rabi": ["Toor dal and chickpea love the Rabi sun. My father grew nothing else."],
+        "winter": ["Winter is for greens, garlic and rest. Even the soil needs a nap."],
+        "rain": ["Hear that? That's the sound of free watering. Go fishing, the fields are taken care of."],
+        "hearts_4": ["You've got good hands. Your grandfather would be proud of that plot."],
+        "hearts_8": ["I've been farming here fifty years. I never thought I'd see someone make the old farm sing again."],
+        "birthday": ["For me? On my birthday? Aiyo, you'll make an old man cry."],
+        "festival": ["A festival day! No farming today — well, maybe a little watering."],
+        "gift_loved": ["{item}! Now that's a proper farmer's gift. Thank you!"],
+        "gift_disliked": ["{item}? Hmph. I suppose it's the thought that counts."]
+      }
+    },
+    {
+      "id": "devi",
+      "name": "Devi",
+      "role": "Herbalist",
+      "birthday": { "season": "ugadi", "day": 21 },
+      "loves": ["turmeric_root", "black_pepper", "amla", "neem_flowers"],
+      "likes": ["curry_leaves", "methi_leaves", "garlic", "tamarind", "jasmine_flower"],
+      "dislikes": ["watermelon", "mysore_pak"],
+      "dialogue": {
+        "first_meet": ["Oh, hello. I'm Devi. I make remedies from what the Ghats give us — if you find anything interesting on the trail, show me."],
+        "default": [
+          "Turmeric, neem, amla... the forest is a pharmacy, if you know where to look.",
+          "The Ghats Trail is west of your farm. Different plants appear each season.",
+          "Paati says the Vanam Thay left when we stopped caring for the Panchayat Hall. I think she may be right."
+        ],
+        "ugadi": ["Neem flowers bloom around Ugadi. Bitter and sweet — just like the new year."],
+        "kharif": ["Mushrooms pop up after the rain. Only pick the ones on the trail, not the ones by the tank."],
+        "rabi": ["Amla season! One a day and you'll never need my remedies."],
+        "winter": ["Wild honey is at its best now. The bees on the cliffs are generous in the cold."],
+        "rain": ["The forest smells alive in the rain. Everything grows twice as fast out there."],
+        "hearts_4": ["I've been saving my grandmother's notes on the valley's herbs. Maybe I'll show you someday."],
+        "hearts_8": ["You listen to the valley, like I do. It's rare. I'm glad you're here."],
+        "birthday": ["You found out my birthday? That's... very sweet of you."],
+        "festival": ["Festivals remind me why the valley matters. Everyone together, just for a day."],
+        "gift_loved": ["{item}... this is perfect. I can make so much with it. Thank you."],
+        "gift_disliked": ["{item}. Hmm. I don't think I have a use for this."]
+      }
+    },
+    {
+      "id": "ravi",
+      "name": "Ravi",
+      "role": "Fisherman",
+      "birthday": { "season": "winter", "day": 18 },
+      "loves": ["golden_mahseer", "karimeen", "payasam"],
+      "likes": ["rohu", "murrel", "coconut", "banana_bunch", "idli"],
+      "dislikes": ["amaranth_greens", "methi_leaves"],
+      "first_meet_gift": { "item_id": "fishing_rod", "line": "Here — take my old rod. Face the pond on your farm or the Ghats river and cast with it." },
+      "dialogue": {
+        "first_meet": ["Hey! New face! I'm Ravi. I spend more time on the water than on land."],
+        "default": [
+          "Hold the rod steady, and when the marker swings into the green, reel in!",
+          "The pond on your farm has tilapia and rohu. The Ghats river holds the rarer ones.",
+          "Some fish only bite when it rains. The best fishermen love bad weather."
+        ],
+        "ugadi": ["They say a Golden Mahseer still swims in the Ghats river. I've never caught one."],
+        "kharif": ["Monsoon means prawns in the river and magur in the ponds. Get out there!"],
+        "rabi": ["Karimeen are back in the river. Pearl spot fry — nothing better."],
+        "winter": ["Cold water, slow fish. But the Golden Mahseer... winter is its season."],
+        "rain": ["Perfect fishing weather! What are you doing talking to me?"],
+        "hearts_4": ["You're turning into a real angler. Next time, let's fish the river together."],
+        "hearts_8": ["You're the only one in the valley who gets why I love the water. Thanks for that."],
+        "birthday": ["My birthday! You're the best. Seriously."],
+        "festival": ["Food, music, and nobody asking me to fix their nets. Festivals are great."],
+        "gift_loved": ["No way — {item}! You're a legend!"],
+        "gift_disliked": ["{item}? Uh... thanks, I guess? The fish might like it."]
+      }
+    },
+    {
+      "id": "anjali",
+      "name": "Anjali",
+      "role": "Schoolteacher",
+      "birthday": { "season": "kharif", "day": 24 },
+      "loves": ["sunflower", "bevu_bella", "custard_apple"],
+      "likes": ["jasmine_flower", "carrot", "jamun", "ber", "dosa"],
+      "dislikes": ["garlic", "magur"],
+      "dialogue": {
+        "first_meet": ["Hello! I'm Anjali, I teach at the little school by the tank. The children are already talking about you."],
+        "default": [
+          "The children want to know what you're growing. I told them to come see for themselves.",
+          "I've been teaching the history of the valley — the tank was built by a king nobody remembers.",
+          "If you look at the calendar in your journal (J), you'll never miss a birthday or festival."
+        ],
+        "ugadi": ["Happy new year! The school always opens again after Ugadi."],
+        "kharif": ["Monsoon holidays! Well, for the children. I still have papers to mark."],
+        "rabi": ["Deepavali is coming — the children are making paper lanterns for the square."],
+        "winter": ["Pongal is the best lesson in gratitude I know. Thank the sun, the rain, the cattle."],
+        "rain": ["The school roof leaks when it rains. One day we'll fix that too."],
+        "hearts_4": ["The children drew a picture of your farm. You're in it, with a very large watering can."],
+        "hearts_8": ["I used to think I'd leave the valley one day. Lately, I don't think about that at all."],
+        "birthday": ["A birthday present! You're so thoughtful. The children will be jealous."],
+        "festival": ["Look at the kolam the children drew! Aren't they wonderful?"],
+        "gift_loved": ["{item}! How did you know? I love it!"],
+        "gift_disliked": ["{item}... that's very kind, but it's not really for me."]
+      }
+    },
+    {
+      "id": "paati",
+      "name": "Meenakshi Paati",
+      "role": "Village elder",
+      "birthday": { "season": "winter", "day": 3 },
+      "loves": ["sakkarai_pongal", "coconut", "wild_honey", "banana_bunch"],
+      "likes": ["paddy_grain", "jasmine_flower", "methi_leaves", "payasam", "idli"],
+      "dislikes": ["red_chilli"],
+      "dialogue": {
+        "first_meet": ["So you're the one who came back. I knew your grandmother, child. Come — see what's become of our Panchayat Hall."],
+        "default": [
+          "The Panchayat Hall was the heart of Viralpadi. Now look at it — cracked walls and empty shelves.",
+          "Fill the Hall's offering baskets with what the valley gives, and the Vanam Thay may return.",
+          "Each season brings different gifts. The baskets ask for a little of everything."
+        ],
+        "ugadi": ["Eat your bevu-bella, child. Bitter and sweet together — that's what a year is."],
+        "kharif": ["The monsoon fills the old tank. The king who built it knew what he was doing."],
+        "rabi": ["When I was a girl, the whole valley lit lamps for Deepavali. We will again."],
+        "winter": ["Pongal is when we thank the land. Come to the square — bring something you grew."],
+        "rain": ["Rain on the roof. My knees knew it was coming before the clouds did."],
+        "hearts_4": ["You remind me of your grandmother. Stubborn, kind, always muddy."],
+        "hearts_8": ["When the Hall is whole again, I want you standing beside me. You've earned it."],
+        "birthday": ["At my age, every birthday is a gift. But this is a nice one too."],
+        "festival": ["This is how Viralpadi should always feel. Everyone together."],
+        "gift_loved": ["{item}! You spoil an old woman. Bless you, child."],
+        "gift_disliked": ["{item}? At my age? My stomach would never forgive me."]
+      }
+    }
+  ]
+}

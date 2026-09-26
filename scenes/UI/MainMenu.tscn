@@ -8,4 +8,4 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1")
-## All child nodes are created procedurally in MainMenu.gd _ready().
+; All child nodes are created procedurally in MainMenu.gd _ready().

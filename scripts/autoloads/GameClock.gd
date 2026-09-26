@@ -29,7 +29,7 @@ signal sleep_triggered()         ## Emitted at 2am or when player sleeps manuall
 enum Season {
 	KHARIF  = 0,   ## Monsoon / Summer  (crop-rich, rain)
 	RABI    = 1,   ## Post-monsoon / Autumn
-	WINTER  = 2,   ## Bittersweet still; no field crops
+	WINTER  = 2,   ## Cool & dry; only hardy greens and roots grow
 	UGADI   = 3,   ## New Year / Spring (festivals, flowers) — the year starts here
 }
 
@@ -205,6 +205,47 @@ func get_time_string() -> String:
 ## Returns the season display name
 func get_season_name() -> String:
 	return SEASON_NAMES.get(current_season, "Unknown")
+
+
+## Lower-case season key as used in the JSON data files, e.g. "ugadi".
+func season_key(season: int = -1) -> String:
+	if season == -1:
+		season = current_season
+	return String(SEASON_NAMES.get(season, "")).to_lower()
+
+
+## Parse a JSON season key ("kharif") back into a Season value (-1 if unknown).
+func season_from_key(key: String) -> int:
+	for s in SEASON_NAMES:
+		if String(SEASON_NAMES[s]).to_lower() == key.to_lower():
+			return s
+	return -1
+
+
+## The calendar date `offset` days from today: { "day", "season", "year" }.
+func get_date_offset(offset: int) -> Dictionary:
+	var day := current_day
+	var season: int = current_season
+	var year := current_year
+	for i in range(offset):
+		day += 1
+		if day > DAYS_PER_SEASON:
+			day = 1
+			var idx = SEASON_ORDER.find(season)
+			season = SEASON_ORDER[(max(idx, 0) + 1) % SEASON_ORDER.size()]
+			if season == STARTING_SEASON:
+				year += 1
+	return {"day": day, "season": season, "year": year}
+
+
+## True on the first morning of a season (but not the very first day of a game).
+func is_new_season_morning() -> bool:
+	return current_day == 1 and days_elapsed > 0
+
+
+## True on the first morning of a new year (Ugadi 1, Year 2+).
+func is_new_year_morning() -> bool:
+	return is_new_season_morning() and current_season == STARTING_SEASON
 
 
 ## Returns the full date string, e.g. "Day 3, Kharif — Year 1"
