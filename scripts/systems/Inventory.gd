@@ -90,6 +90,7 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 				_slots[i]["quantity"] += to_add
 				quantity -= to_add
 				if quantity == 0:
+					GameData.note_collected(item_id)
 					emit_signal("inventory_changed")
 					return true
 
@@ -103,6 +104,8 @@ func add_item(item_id: String, quantity: int = 1) -> bool:
 		_slots[i] = {"item_id": item_id, "quantity": to_add}
 		quantity -= to_add
 
+	if quantity == 0:
+		GameData.note_collected(item_id)
 	emit_signal("inventory_changed")
 	return quantity == 0
 

@@ -1,0 +1,50 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/Mines.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/systems/Warp.gd" id="2"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(16, 16)
+
+[node name="Mines" type="Node2D"]
+script = ExtResource("1")
+
+[node name="Ground" type="Polygon2D" parent="."]
+; Cave floor — Mines.gd darkens it with depth. Rocks, ladders and the lift
+; are placed in code for each floor.
+color = Color(0.3, 0.26, 0.22, 1)
+polygon = PackedVector2Array(0, 0, 320, 0, 320, 240, 0, 240)
+
+[node name="CaveWall" type="Polygon2D" parent="."]
+color = Color(0.16, 0.13, 0.11, 1)
+polygon = PackedVector2Array(0, 0, 320, 0, 320, 16, 0, 16)
+
+[node name="Spawns" type="Node2D" parent="."]
+
+[node name="default" type="Marker2D" parent="Spawns"]
+position = Vector2(56, 120)
+
+[node name="from_town" type="Marker2D" parent="Spawns"]
+position = Vector2(32, 120)
+
+[node name="from_above" type="Marker2D" parent="Spawns"]
+; Arrival point on floors 1+ (beside the ladder back up).
+position = Vector2(56, 56)
+
+[node name="from_below" type="Marker2D" parent="Spawns"]
+; Arrival at the entrance when climbing out or riding the lift up.
+position = Vector2(224, 120)
+
+[node name="ToTown" type="Area2D" parent="."]
+; Tunnel mouth back west to the town square (entrance floor only).
+position = Vector2(8, 120)
+script = ExtResource("2")
+target_scene = "res://scenes/World/Town.tscn"
+target_spawn = "from_mines"
+
+[node name="ToTownShape" type="CollisionShape2D" parent="ToTown"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="ToTownSprite" type="Polygon2D" parent="ToTown"]
+color = Color(0.62, 0.58, 0.45, 1)
+polygon = PackedVector2Array(-8, -12, 8, -12, 8, 12, -8, 12)

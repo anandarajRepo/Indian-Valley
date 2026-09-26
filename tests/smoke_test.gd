@@ -1,5 +1,6 @@
 extends Node
-## Headless smoke test for the Phase 2 (Alpha) year loop.
+## Headless smoke test for the Phase 3 (Beta) build: the full year loop plus
+## the mines, forge, romance, requests, collection, save slots and demo ending.
 ##
 ## Run from the project root:
 ##   godot --headless res://tests/SmokeTest.tscn
@@ -17,7 +18,7 @@ var _slot_backup := ""
 
 func _ready() -> void:
 	# Watchdog: a script error aborts _run mid-way, so never hang forever.
-	get_tree().create_timer(90.0).timeout.connect(func():
+	get_tree().create_timer(180.0).timeout.connect(func():
 		print("\nSmoke test TIMED OUT after %d passed, %d failed" % [_passed, _failed])
 		_restore_slot()
 		get_tree().quit(2))
@@ -91,12 +92,15 @@ func _run() -> void:
 	gm.new_game()
 	await frames(3)
 	check(world().name == "Farm", "new game loads the farm")
+	check(gm.popup._mode == gm.popup.Mode.DIALOGUE and gm.popup._dlg_speaker == "Grandmother's letter", "intro letter plays")
+	gm.popup.close_all()
 	check(GameClock.current_season == GameClock.Season.UGADI and GameClock.current_day == 1, "starts Ugadi 1")
 	check(Weather.today == Weather.SUNNY, "first morning is sunny")
 	check(gm.get_forage_spots("trail").size() >= GameManager.FORAGE_MIN, "trail forage generated")
 	check(ItemDB.get_crops_for_season(GameClock.Season.WINTER).size() >= 5, "winter has crops")
-	check(ItemDB.get_bundles().size() == 6, "six Hall bundles loaded")
-	check(Relationships.get_all_npcs().size() == 6, "six villagers loaded")
+	check(ItemDB.get_bundles().size() == 7, "seven Hall bundles loaded")
+	check(Relationships.get_all_npcs().size() == 12, "twelve villagers loaded")
+	check(Relationships.get_candidates().size() == 6, "six marriage candidates")
 
 	print("[2] Farming + rain")
 	var farm := world()
@@ -232,13 +236,12 @@ func _run() -> void:
 	check(Calendar.events_for_season(GameClock.Season.UGADI).size() >= 2, "calendar lists festival + birthdays")
 
 	print("[9] Panchayat Hall")
+	var emax := GameData.energy_max
 	for b in ItemDB.get_bundles():
 		for req in b["items"]:
 			inv().add_item(req["item_id"], int(req["quantity"]))
-	var emax := GameData.energy_max
-	for b in ItemDB.get_bundles():
 		gm.donate_to_bundle(b["id"])
-	check(gm.hall_state["completed"].size() == 6, "all bundles complete")
+	check(gm.hall_state["completed"].size() == 7, "all bundles complete")
 	check(gm.hall_state["restored"], "hall restored")
 	check(GameData.energy_max == emax + 20 + 30, "energy rewards applied")
 	await get_tree().create_timer(0.3).timeout
@@ -249,7 +252,7 @@ func _run() -> void:
 	gm.open_journal()
 	await frames(2)
 	check(gm.popup._mode == gm.popup.Mode.JOURNAL, "journal opens")
-	for i in range(3):
+	for i in range(5):
 		gm.popup._journal.cycle(1)
 		await frames(1)
 	gm.popup.close_all()
@@ -300,6 +303,238 @@ func _run() -> void:
 	await sleep_overnight()
 	check(GameClock.current_year == 2 and GameClock.current_season == GameClock.Season.UGADI, "Year 2 begins at Ugadi")
 
+	print("[14] Kanagiri Mines")
+	gm.goto_town("from_farm")
+	await frames(3)
+	check(world().get_node_or_null("Selvam") != null and world().get_node_or_null("ToMines") != null, "town has the forge and mine road")
+	var selvam_talk := Relationships.talk("selvam")
+	check(selvam_talk["gift"].get("item_id", "") == "pickaxe", "Selvam gives a pickaxe on first meeting")
+	gm.give_item("pickaxe", 1)
+	gm.goto_mines("from_town")
+	await frames(3)
+	var mines := world()
+	check(mines.name == "Mines" and mines.floor_num == 0, "mines entrance loads")
+	check(mines.get_node_or_null("LadderDown") != null and mines.get_node_or_null("Lift") != null, "entrance has ladder and lift")
+	check(gm.lift_floors().is_empty(), "lift locked before floor 5")
+	gm.enter_mine_floor(1)
+	await frames(3)
+	mines = world()
+	check(mines.floor_num == 1 and not mines.rocks.is_empty(), "floor 1 has rocks")
+	check(gm.location_note == "Mines · Floor 1", "HUD shows the mine floor")
+	var stone_before: int = inv().count_item("stone")
+	for key in mines.rocks.keys():
+		var parts: PackedStringArray = key.split(",")
+		var t := Vector2i(int(parts[0]), int(parts[1]))
+		for n in range(6):
+			if mines.hit_rock(t):
+				break
+	check(mines.rocks.is_empty(), "every rock breaks")
+	check(mines.ladder != null, "breaking the last rock reveals the ladder")
+	check(GameData.get_stat("rocks_broken") > 0 and GameData.get_skill_xp("mining") > 0, "mining stats and xp")
+	check(inv().count_item("stone") > stone_before or GameData.has_collected("copper_ore"), "rocks drop stone or ore")
+	mines.descend()
+	await frames(3)
+	check(world().floor_num == 2 and int(gm.mine_state["deepest"]) == 2, "ladder leads down a floor")
+	gm.enter_mine_floor(5)
+	await frames(3)
+	check(gm.lift_floors() == [5] and world().get_node_or_null("Lift") != null, "floor 5 unlocks the lift")
+	check(Mines_rock_table_ok(), "deeper floors hold richer rocks")
+	gm.enter_mine_floor(20)
+	await frames(3)
+	check(world().get_node_or_null("Shrine") != null and world().ladder == null, "floor 20 has the shrine and no ladder")
+	world().visit_shrine()
+	check(inv().count_item("tank_kings_seal") == 1 and gm.mine_state["seal_found"], "shrine gives the Tank King's Seal")
+	gm.popup.close_all()
+	check(Relationships.get_taste("anjali", "tank_kings_seal") == "loved", "Anjali loves the seal")
+
+	print("[15] Forge & tool upgrades")
+	GameData.gold = 600
+	inv().remove_item("copper_ore", inv().count_item("copper_ore"))   # floor 1 may have dropped some
+	check(not gm.upgrade_tool("hoe")["ok"], "upgrade needs ore")
+	inv().add_item("copper_ore", 5)
+	var up := gm.upgrade_tool("hoe")
+	check(up["ok"] and GameData.get_tool_level("hoe") == 1 and GameData.gold == 100, "copper hoe upgrade")
+	check(inv().count_item("copper_ore") == 0, "upgrade consumes ore")
+	check(GameData.tool_reach("hoe") == 3 and GameData.tool_energy_cost("hoe", 2) == 1, "upgraded hoe reaches 3 tiles for less energy")
+	check(GameData.tool_display_name("hoe") == "Copper Hoe", "upgraded tool name")
+	gm.open_shop("blacksmith")
+	await frames(2)
+	check(gm.popup._mode == gm.popup.Mode.BLACKSMITH, "forge view opens")
+	gm.popup.close_all()
+	gm.open_shop("chai")
+	await frames(2)
+	check(gm.popup._mode == gm.popup.Mode.SHOP and "veg_biryani" in gm.shop_stock("chai"), "chai stall opens")
+	gm.popup.close_all()
+	check("jasmine_garland" in gm.shop_stock("general") and not "wedding_garland" in gm.shop_stock("general"), "general store stocks garlands")
+
+	print("[16] Waking up at home")
+	gm.goto_mines("from_town")
+	await frames(3)
+	var player_now = gm.get_active_player()
+	player_now._try_sleep()
+	check(not GameClock.is_paused(), "can't sleep with F away from home")
+	await sleep_overnight()
+	await frames(3)
+	check(world().name == "Farm", "passing out in the mines wakes you at home")
+	check(GameData.energy_current == GameData.energy_max / 2, "passing out away from home costs energy")
+	var farm2 := world()
+	farm2.player_instance.facing = 3   # right
+	farm2._on_tool_used("hoe", Vector2i(5, 9))
+	check(gm.farm_tiles.has("5,9") and gm.farm_tiles.has("6,9") and gm.farm_tiles.has("7,9"), "copper hoe tills a row of 3")
+
+	print("[17] Romance")
+	Relationships.points["arjun"] = 0
+	Relationships.add_points("arjun", 3000)
+	check(Relationships.get_hearts("arjun") == 8, "candidates cap at 8 hearts before dating")
+	Relationships.gifted_today.clear()
+	check(not Relationships.give_gift("arjun", "wedding_garland")["consumed"], "can't propose before dating")
+	check(not Relationships.give_gift("kavitha", "jasmine_garland")["consumed"], "non-candidates decline garlands")
+	var date := Relationships.give_gift("arjun", "jasmine_garland")
+	check(date["consumed"] and Relationships.is_dating("arjun"), "jasmine garland starts dating")
+	check("wedding_garland" in gm.shop_stock("general"), "wedding garland on sale once dating")
+	Relationships.add_points("arjun", 1000)
+	check(Relationships.get_hearts("arjun") == 10, "dating lifts the heart cap")
+	Relationships.gifted_today.clear()
+	var proposal := Relationships.give_gift("arjun", "wedding_garland")
+	check(proposal["consumed"] and Relationships.engaged_to == "arjun", "wedding garland is a proposal")
+	check(Relationships.relationship_status("arjun") == "Engaged", "engaged status")
+	Relationships.wedding_day = GameClock.days_elapsed + 1
+	GameClock.resume()
+	GameClock._trigger_sleep()
+	await frames(2)
+	check(gm.popup._mode == gm.popup.Mode.SUMMARY, "wedding morning summary")
+	gm.popup.close_all()
+	check(Relationships.spouse == "arjun" and Relationships.engaged_to == "", "the wedding happens")
+	gm.goto_farm("default")
+	await frames(3)
+	check(world().get_node_or_null("Spouse") != null, "spouse lives on the farm")
+	check(Relationships.talk("arjun")["lines"][-1] in Relationships.get_npc("arjun")["dialogue"]["spouse"], "spouse dialogue")
+	gm.goto_town("from_farm")
+	await frames(3)
+	check(world().get_node_or_null("Arjun") == null, "spouse no longer in the square")
+	for i in range(8):
+		if gm.apply_spouse_help() != "":
+			break
+	check(true, "spouse morning help runs")
+
+	print("[18] Villager requests")
+	set_date(GameClock.Season.UGADI, 3)
+	Quests.reset_to_new_game()
+	check(Quests.post_new() and Quests.has_active(), "a request is posted")
+	var req: Dictionary = Quests.active.duplicate()
+	check(Quests.is_obtainable(req["item_id"]), "requested item is obtainable")
+	inv().add_item(req["item_id"], int(req["quantity"]))
+	var gold_q := GameData.gold
+	var pts_q := Relationships.get_points(req["npc_id"])
+	var board = world().get_node("NoticeBoard")
+	board.interact(gm.get_active_player())
+	await frames(2)
+	check(gm.popup._mode == gm.popup.Mode.CHOICE, "notice board offers delivery")
+	gm.popup.close_all()
+	var delivered := Quests.deliver(inv())
+	check(delivered["ok"] and GameData.gold == gold_q + int(req["reward"]), "delivery pays the reward")
+	check(Relationships.get_points(req["npc_id"]) > pts_q or Relationships.get_hearts(req["npc_id"]) >= 8, "delivery raises friendship")
+	check(GameData.get_stat("requests_completed") == 1 and not Quests.has_active(), "request completed")
+	Quests.post_new()
+	Quests.active["due_day"] = GameClock.days_elapsed - 1
+	Quests._on_day_started(1, GameClock.current_season)
+	check(not Quests.last_expired.is_empty(), "overdue requests expire")
+
+	print("[19] Collection & journal")
+	# (The v1 load in [12] started a fresh collection, so check post-load finds.)
+	check(GameData.has_collected("copper_ore") and GameData.has_collected("tank_kings_seal"), "finds are collected")
+	check(not GameData.has_collected("hoe"), "tools aren't collectibles")
+	gm.open_journal()
+	await frames(2)
+	for i in range(5):
+		gm.popup._journal.show_tab(i)
+		await frames(1)
+	check(gm.popup._journal._body.get_child_count() > 0, "journal tabs build")
+	gm.popup.close_all()
+
+	print("[20] Settings")
+	var relaxed_before := Settings.relaxed_clock
+	Settings.relaxed_clock = true
+	Settings.apply()
+	check(is_equal_approx(GameClock.time_scale, Settings.RELAXED_SCALE), "relaxed clock slows time")
+	Settings.relaxed_clock = relaxed_before
+	Settings.apply()
+	gm.open_options()
+	await frames(2)
+	check(gm.popup._mode == gm.popup.Mode.OPTIONS, "options open")
+	gm.popup.close_all()
+
+	print("[21] Save v3 round trip")
+	gm.save_game()
+	var deepest := int(gm.mine_state["deepest"])
+	GameData.reset_to_new_game()
+	Relationships.reset_to_new_game()
+	Quests.reset_to_new_game()
+	gm.mine_state = {}
+	check(gm.continue_game(), "v3 save loads")
+	await frames(3)
+	check(GameData.get_tool_level("hoe") == 1, "tool levels persisted")
+	check(int(gm.mine_state["deepest"]) == deepest and gm.mine_state["seal_found"], "mine progress persisted")
+	check(Relationships.spouse == "arjun", "marriage persisted")
+	check(GameData.has_collected("tank_kings_seal"), "collection persisted")
+	check(gm.get_active_player() != null and world().get_node_or_null("Spouse") != null, "spouse on farm after load")
+	var v2 := {"version": 2, "clock": {"hour": 6, "minute": 0, "day": 9, "season": 0, "year": 1, "days_elapsed": 36},
+		"player": {"gold": 1234}, "farm": {"tiles": {}}, "inventory": {}, "social": {"points": {"ravi": 300}},
+		"hall": {"completed": {}}, "weather": {}, "calendar": {}, "world": {}}
+	var f2 := FileAccess.open(SaveManager._slot_path(TEST_SLOT), FileAccess.WRITE)
+	f2.store_string(JSON.stringify(v2))
+	f2.close()
+	check(gm.continue_game(), "v2 save loads")
+	await frames(3)
+	check(GameData.gold == 1234 and Relationships.get_points("ravi") == 300, "v2 data kept")
+	check(GameData.get_tool_level("hoe") == 0 and int(gm.mine_state["deepest"]) == 0 and Relationships.spouse == "", "v3 defaults for v2 save")
+
+	print("[22] Title screen & save slots")
+	gm.show_main_menu()
+	await frames(3)
+	var menu := world()
+	check(menu.name == "MainMenu", "main menu shows")
+	menu.show_slots(true)
+	await frames(2)
+	menu._pick_new_slot(TEST_SLOT, false)
+	await frames(2)
+	menu._name_edit.text = "Tester"
+	menu._start_new()
+	await frames(3)
+	check(gm.current_slot == TEST_SLOT and GameData.player_name == "Tester", "new game in chosen slot with name")
+	check(world().name == "Farm" and gm.popup._mode == gm.popup.Mode.DIALOGUE, "farm loads with intro letter")
+	gm.popup.close_all()
+	gm.save_game()
+	check(SaveManager.describe_slot(TEST_SLOT).begins_with("Tester"), "slot summary shows the farmer")
+
+	print("[23] Demo ending")
+	gm.demo_override = 1
+	set_date(GameClock.Season.WINTER, 28)
+	var saved_before := FileAccess.get_file_as_string(SaveManager._slot_path(TEST_SLOT))
+	GameClock.resume()
+	GameClock._trigger_sleep()
+	await frames(2)
+	check(gm.popup._mode == gm.popup.Mode.SUMMARY and gm.popup._summary_on_close.is_valid(), "demo ends after Year 1")
+	check(FileAccess.get_file_as_string(SaveManager._slot_path(TEST_SLOT)) == saved_before, "demo end doesn't overwrite the save")
+	gm.popup._close_summary()
+	await frames(2)
+	check(gm.popup._mode == gm.popup.Mode.DIALOGUE, "thank-you message plays")
+	for i in range(10):
+		if gm.popup._mode != gm.popup.Mode.DIALOGUE:
+			break
+		gm.popup._advance_dialogue()
+		await frames(1)
+	await frames(3)
+	check(not gm.in_game and world().name == "MainMenu", "demo returns to the title screen")
+	gm.demo_override = -1
+
 	_restore_slot()
 	print("\nSmoke test: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
+
+
+func Mines_rock_table_ok() -> bool:
+	## Floor 1 never has gold; floor 18 can.
+	var shallow := Mines.rock_table(1).map(func(e): return e[0])
+	var deep := Mines.rock_table(18).map(func(e): return e[0])
+	return not "gold" in shallow and "gold" in deep and "ruby" in deep

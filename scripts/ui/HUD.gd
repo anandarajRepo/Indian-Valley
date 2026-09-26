@@ -188,6 +188,9 @@ func _update_clock() -> void:
 			text += "  ·  " + festival.get("name", "Festival")
 		elif not Relationships.birthdays_today().is_empty():
 			text += "  ·  %s's birthday" % Relationships.birthdays_today()[0]
+		var gm = GameManager.instance
+		if gm and gm.location_note != "":
+			text = gm.location_note + "  ·  " + text
 		weather_label.text = text
 
 

@@ -8,6 +8,12 @@ extends Node
 ##   - one gift per villager per day: loved +80, liked +45, neutral +20,
 ##     disliked -20 — multiplied ×8 on their birthday
 ##
+## Romance (Beta): villagers flagged `"candidate": true` can be courted.
+##   - their friendship is capped at 8 hearts until you're dating
+##   - give a Jasmine Garland at 8+ hearts to start dating
+##   - give a Wedding Garland at 10 hearts to propose; the wedding is held
+##     WEDDING_DELAY days later and your spouse moves onto the farm
+##
 ## NPC nodes in the world only carry an `npc_id`; everything else lives here.
 
 signal friendship_changed(npc_id: String, points: int)
@@ -25,8 +31,15 @@ const GIFT_NEUTRAL:    int = 20
 const GIFT_DISLIKED:   int = -20
 const BIRTHDAY_MULT:   int = 8
 
+## Candidates can't pass this many hearts until you're dating them.
+const DATING_HEART_CAP: int = 8
+const WEDDING_DELAY:    int = 3      ## days between proposal and wedding
+
+const DATING_ITEM:   String = "jasmine_garland"
+const PROPOSAL_ITEM: String = "wedding_garland"
+
 ## Item categories a villager will accept as a gift.
-const GIFTABLE_CATEGORIES: Array = ["crop", "forage", "fish", "food", "mineral"]
+const GIFTABLE_CATEGORIES: Array = ["crop", "forage", "fish", "food", "mineral", "artifact", "special"]
 
 var _npcs: Dictionary = {}      ## npc_id → npc data dict (from JSON)
 var _order: Array     = []      ## npc ids in file order (stable UI ordering)
@@ -35,6 +48,11 @@ var points:        Dictionary = {}   ## npc_id → int
 var met:           Dictionary = {}   ## npc_id → true once introduced
 var talked_today:  Dictionary = {}   ## npc_id → true
 var gifted_today:  Dictionary = {}   ## npc_id → true
+
+var dating:        Dictionary = {}   ## npc_id → true
+var engaged_to:    String = ""       ## npc_id you've proposed to
+var wedding_day:   int = -1          ## GameClock.days_elapsed of the wedding
+var spouse:        String = ""       ## npc_id you're married to
 
 
 func _ready() -> void:
@@ -107,6 +125,37 @@ func birthdays_today() -> Array:
 	return names
 
 
+func is_candidate(npc_id: String) -> bool:
+	return bool(get_npc(npc_id).get("candidate", false))
+
+
+func get_candidates() -> Array:
+	return _order.filter(func(id): return is_candidate(id))
+
+
+func is_dating(npc_id: String) -> bool:
+	return dating.has(npc_id)
+
+
+func max_points_for(npc_id: String) -> int:
+	if is_candidate(npc_id) and not is_dating(npc_id) and spouse != npc_id:
+		return POINTS_PER_HEART * DATING_HEART_CAP
+	return MAX_POINTS
+
+
+func relationship_status(npc_id: String) -> String:
+	## "Spouse" | "Engaged" | "Dating" | "Single" (candidates) | "" (others)
+	if spouse == npc_id:
+		return "Spouse"
+	if engaged_to == npc_id:
+		return "Engaged"
+	if is_dating(npc_id):
+		return "Dating"
+	if is_candidate(npc_id):
+		return "Single"
+	return ""
+
+
 func count_friends(min_hearts: int) -> int:
 	var n := 0
 	for id in _order:
@@ -121,7 +170,10 @@ func count_friends(min_hearts: int) -> int:
 func add_points(npc_id: String, amount: int) -> void:
 	if not _npcs.has(npc_id):
 		return
-	points[npc_id] = clampi(get_points(npc_id) + amount, 0, MAX_POINTS)
+	var current := get_points(npc_id)
+	# Never knock existing points down to a lower cap; just stop further gains.
+	var cap := maxi(max_points_for(npc_id), current)
+	points[npc_id] = clampi(current + amount, 0, cap)
 	emit_signal("friendship_changed", npc_id, points[npc_id])
 
 
@@ -161,6 +213,13 @@ func _pick_line(npc_id: String, dlg: Dictionary) -> String:
 
 	if is_birthday(npc_id):
 		return "It's my birthday today! Thank you for stopping by."
+	if spouse == npc_id and dlg.has("spouse"):
+		return _pick(dlg["spouse"], roll)
+	if engaged_to == npc_id:
+		return "Only %d more day%s until the wedding! I can hardly wait." % [
+			days_until_wedding(), "" if days_until_wedding() == 1 else "s"]
+	if is_dating(npc_id) and dlg.has("dating") and roll % 2 == 0:
+		return _pick(dlg["dating"], roll)
 	if Calendar.is_festival_today() and dlg.has("festival"):
 		return _pick(dlg["festival"], roll)
 	if Weather.is_raining() and dlg.has("rain") and roll % 2 == 0:
@@ -209,8 +268,11 @@ func get_taste(npc_id: String, item_id: String) -> String:
 
 
 func give_gift(npc_id: String, item_id: String) -> Dictionary:
-	## Apply a gift's friendship effect. The caller removes the item.
-	## Returns { "taste": String, "delta": int, "lines": Array }.
+	## Apply a gift's friendship effect. The caller removes the item when the
+	## result's "consumed" is true (a refused garland is handed back).
+	## Returns { "taste": String, "delta": int, "lines": Array, "consumed": bool }.
+	if item_id == DATING_ITEM or item_id == PROPOSAL_ITEM:
+		return _give_garland(npc_id, item_id)
 	var npc := get_npc(npc_id)
 	var taste := get_taste(npc_id, item_id)
 	var delta: int
@@ -243,7 +305,70 @@ func give_gift(npc_id: String, item_id: String) -> Dictionary:
 			lines.append(_pick(dlg.get("gift_disliked", ["{item}... I don't really like this."]), 0).format({"item": item_name}))
 		_:
 			lines.append("Oh, %s. Thank you." % item_name)
-	return {"taste": taste, "delta": delta, "lines": lines}
+	return {"taste": taste, "delta": delta, "lines": lines, "consumed": true}
+
+# ---------------------------------------------------------------------------
+# Romance
+# ---------------------------------------------------------------------------
+
+func _give_garland(npc_id: String, item_id: String) -> Dictionary:
+	var dlg: Dictionary = get_npc(npc_id).get("dialogue", {})
+	var result := {"taste": "special", "delta": 0, "lines": [], "consumed": false}
+	var npc_name := get_name_of(npc_id)
+
+	if not is_candidate(npc_id):
+		result["lines"] = ["A garland? That's lovely of you... but my heart belongs elsewhere. Save it for someone special."]
+		return result
+
+	if item_id == DATING_ITEM:
+		if spouse != "" or engaged_to != "":
+			result["lines"] = ["I think you've already found your someone, haven't you?"]
+		elif is_dating(npc_id):
+			result["lines"] = ["We're already together, silly. But I'll never say no to jasmine."]
+		elif get_hearts(npc_id) < DATING_HEART_CAP:
+			result["lines"] = ["%s smiles, but gently hands the garland back." % npc_name,
+				"(Reach %d hearts before offering a Jasmine Garland.)" % DATING_HEART_CAP]
+		else:
+			dating[npc_id] = true
+			gifted_today[npc_id] = true
+			result["consumed"] = true
+			result["lines"] = dlg.get("accept_dating", ["Yes. I'd like that."]).duplicate()
+			result["lines"].append("(You and %s are now dating.)" % npc_name)
+		return result
+
+	# Wedding Garland — a proposal.
+	if spouse != "" or engaged_to != "":
+		result["lines"] = ["You're already spoken for!"]
+	elif not is_dating(npc_id):
+		result["lines"] = ["A wedding garland? We should get to know each other first...",
+			"(Start dating with a Jasmine Garland before proposing.)"]
+	elif get_hearts(npc_id) < MAX_HEARTS:
+		result["lines"] = ["I love you — but I'm not quite ready yet. Give it a little more time.",
+			"(Reach %d hearts before proposing.)" % MAX_HEARTS]
+	else:
+		engaged_to = npc_id
+		wedding_day = GameClock.days_elapsed + WEDDING_DELAY
+		gifted_today[npc_id] = true
+		result["consumed"] = true
+		result["lines"] = dlg.get("accept_proposal", ["Yes!"]).duplicate()
+		result["lines"].append("(The wedding will be held in %d days, in the town square.)" % WEDDING_DELAY)
+	return result
+
+
+func days_until_wedding() -> int:
+	return maxi(0, wedding_day - GameClock.days_elapsed)
+
+
+func check_wedding() -> String:
+	## Called each morning. Holds the wedding when its day arrives and returns
+	## the new spouse's id (or "").
+	if engaged_to == "" or GameClock.days_elapsed < wedding_day:
+		return ""
+	spouse = engaged_to
+	engaged_to = ""
+	wedding_day = -1
+	dating.erase(spouse)
+	return spouse
 
 # ---------------------------------------------------------------------------
 # Lifecycle / serialisation
@@ -254,6 +379,10 @@ func reset_to_new_game() -> void:
 	met = {}
 	talked_today = {}
 	gifted_today = {}
+	dating = {}
+	engaged_to = ""
+	wedding_day = -1
+	spouse = ""
 
 
 func to_dict() -> Dictionary:
@@ -262,6 +391,10 @@ func to_dict() -> Dictionary:
 		"met":          met,
 		"talked_today": talked_today,
 		"gifted_today": gifted_today,
+		"dating":       dating,
+		"engaged_to":   engaged_to,
+		"wedding_day":  wedding_day,
+		"spouse":       spouse,
 	}
 
 
@@ -272,3 +405,7 @@ func from_dict(d: Dictionary) -> void:
 	met          = d.get("met", {})
 	talked_today = d.get("talked_today", {})
 	gifted_today = d.get("gifted_today", {})
+	dating       = d.get("dating", {})
+	engaged_to   = str(d.get("engaged_to", ""))
+	wedding_day  = int(d.get("wedding_day", -1))
+	spouse       = str(d.get("spouse", ""))

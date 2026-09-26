@@ -8,6 +8,7 @@ config_version=5
 
 config/name="Indian Valley"
 config/description="A farming and life simulation game set in Viralpadi Valley, rural India"
+config/version="0.3.0-beta"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.2", "GL Compatibility")
 boot_splash/bg_color=Color(0.094, 0.078, 0.047, 1)
@@ -23,6 +24,12 @@ ItemDB="*res://scripts/autoloads/ItemDB.gd"
 Calendar="*res://scripts/autoloads/Calendar.gd"
 Relationships="*res://scripts/autoloads/Relationships.gd"
 Weather="*res://scripts/autoloads/Weather.gd"
+Quests="*res://scripts/autoloads/Quests.gd"
+Settings="*res://scripts/autoloads/Settings.gd"
+
+[indian_valley]
+
+demo_build=false
 
 [display]
 

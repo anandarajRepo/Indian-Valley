@@ -40,7 +40,7 @@ Indian-Valley/
 │   └── Systems/      # Farming tiles, crops, NPCs
 ├── scripts/          # GDScript source files
 │   ├── autoloads/    # Singletons (GameClock, GameData, SaveManager, ItemDB,
-│   │                 #   Calendar, Relationships, Weather)
+│   │                 #   Calendar, Relationships, Weather, Quests, Settings)
 │   ├── player/       # Player controller, tools
 │   ├── world/        # Farm, tilemap, environment
 │   ├── ui/           # HUD, inventory, dialogue
@@ -50,7 +50,9 @@ Indian-Valley/
 │   ├── tilesets/
 │   └── audio/
 ├── data/             # JSON data files (items, crops, npcs, festivals, bundles)
-└── tests/            # Headless smoke test (SmokeTest.tscn)
+├── tests/            # Headless smoke test (SmokeTest.tscn)
+├── tools/            # export_itch.sh — builds & pushes the itch.io demo
+└── export_presets.cfg  # Web / Windows / Linux demo presets
 ```
 
 ## Getting Started
@@ -67,7 +69,7 @@ Indian-Valley/
 | 0 — Foundations | Core loop proof of concept | ✅ Complete |
 | 1 — Vertical Slice | Playable Spring season | ✅ Complete |
 | 2 — Alpha | Full year one | ✅ Complete |
-| 3 — Beta | Content-complete, itch.io demo | ⏳ Planned |
+| 3 — Beta | Content-complete, itch.io demo | ✅ Complete |
 | 4 — Polish | Release-ready | ⏳ Planned |
 | 5 — Launch | Steam Early Access | ⏳ Planned |
 
@@ -173,6 +175,58 @@ Hall and stats. Phase 1 (v1) saves load with sensible defaults.
 | Eat food, cast fishing rod | Left-click or X (with the item selected) |
 | Reel in a fish | Z / X / Enter |
 
+## Phase 3 — Beta (Content-complete Year One, itch.io demo)
+
+Year One is now content-complete and ships as a free itch.io demo that ends
+after Winter 28 with a thank-you screen (full builds carry on into Year 2).
+
+**Kanagiri Mines** — the mine road leads east from the town square. Twenty
+floors of rocks to break with the pickaxe: stone and copper near the top,
+then iron, gold ore, quartz, amethyst and the rare Kanagiri Ruby deeper down.
+One rock on each floor hides the ladder (the last one always does). Every 5th
+floor you reach unlocks the old lift. At the bottom, an ancient shrine keeps
+the **Tank King's Seal** — a relic of the forgotten king who built the tanks.
+
+**Selvam's forge** — Selvam the blacksmith gives you a pickaxe when you meet,
+and upgrades your hoe, watering can and pickaxe (Copper → Iron → Gold) for
+ore and rupees. Each level tills/waters two more tiles in a row, breaks rocks
+faster and costs 1 less energy per swing.
+
+**Twelve villagers** — six new neighbours join the valley: Selvam
+(blacksmith), Farida (chai stall), Gopal (dairy farmer), Arjun (postman &
+photographer), Dr. Kiran (village doctor) and Meera (potter), each with gift
+tastes, a birthday and seasonal dialogue. Farida's **Chai Kadai** sells hot
+food, from masala chai to veg biryani.
+
+**Romance & marriage** — six villagers (marked ♥: Devi, Ravi, Anjali, Arjun,
+Kiran, Meera) can be courted. Their friendship stops at 8 hearts until you
+give a **Jasmine Garland** (Kavitha's store) to start dating; at 10 hearts a
+**Wedding Garland** is a proposal. The wedding is held three days later, and
+your spouse moves to the farm — some mornings they water the crops or make
+you breakfast.
+
+**Notice board** — most mornings a villager pins a request in the square
+(something they like that's findable this season). Deliver it within three
+days for rupees and a big friendship boost.
+
+**Collection & help** — the journal gains a Collection tab (every crop,
+forage find, fish, mineral and artifact you've found) and a Help tab with the
+controls and tips.
+
+**The seventh basket** — the Panchayat Hall adds *Kanagiri Treasures* (ore
+and gems from the mines).
+
+**Quality of life**
+- Title screen: Continue (latest save), New Game and Load Game across **3 save
+  slots**, name your farmer, and a grandmother's letter to start you off.
+- **Options** (title screen or pause menu): fullscreen, and a *relaxed clock*
+  that makes days last 50% longer. Stored in `user://settings.cfg`.
+- You always wake up at home. Pass out away from the farm (at 2 am or out of
+  energy) and you wake with half energy. **F** only sleeps on the farm.
+- The HUD shows where you are in the mines.
+- Save format v3 (tools, collection, mines, requests, romance). v1 and v2
+  saves load with sensible defaults.
+
 ### Running the smoke test
 
 ```
@@ -181,8 +235,27 @@ godot --headless res://tests/SmokeTest.tscn
 
 It plays through a new game, rain and growth, a season change, fishing,
 foraging, villagers, a festival, the Hall, save/load, v1-save migration and the
-year rollover, and exits non-zero on any failure. It uses save slot 2 and
-restores whatever was there.
+year rollover, then the Beta content — mines, the forge and tool upgrades,
+waking at home, romance and a wedding, requests, the collection, options, v3
+saves and v2 migration, the slot picker and the demo ending — 144 checks. It
+exits non-zero on any failure, uses save slot 2 and restores whatever was
+there.
+
+### Building the itch.io demo
+
+`export_presets.cfg` has three presets — **Web**, **Windows** and **Linux** —
+all tagged with the `demo` feature, which ends the game after Year 1. With
+Godot 4.2 and its export templates installed:
+
+```
+tools/export_itch.sh                                     # → build/itch/{web,windows,linux}
+ITCH_TARGET=you/indian-valley tools/export_itch.sh --push   # also uploads with butler
+```
+
+The script runs the smoke test first. Godot 4.2 web builds use threads, so
+tick **"SharedArrayBuffer support"** in the itch.io embed options for the
+HTML5 upload. To test the demo ending from the editor, set
+`indian_valley/demo_build=true` in `project.godot`.
 
 ## Setting & Lore
 

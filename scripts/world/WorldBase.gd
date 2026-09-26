@@ -20,6 +20,7 @@ func _ready() -> void:
 	add_to_group("world")
 	_spawn_player()
 	if GameManager.instance:
+		GameManager.instance.location_note = ""
 		GameManager.instance.refresh_hud()
 	_world_ready()
 

@@ -58,6 +58,8 @@
     },
     {
       "id": "devi",
+      "candidate": true,
+      "color": [0.35, 0.7, 0.45],
       "name": "Devi",
       "role": "Herbalist",
       "birthday": { "season": "ugadi", "day": 21 },
@@ -65,6 +67,10 @@
       "likes": ["curry_leaves", "methi_leaves", "garlic", "tamarind", "jasmine_flower"],
       "dislikes": ["watermelon", "mysore_pak"],
       "dialogue": {
+        "dating": ["I found a new herb on the trail today and my first thought was: I should show you."],
+        "accept_dating": ["A jasmine garland... for me?", "Yes. I'd like that very much. Let's see where the path takes us."],
+        "accept_proposal": ["A wedding garland. I— yes. Yes! Let's plant a life together on that farm."],
+        "spouse": ["I hung fresh neem by the door. It keeps the mosquitoes — and bad luck — away.", "I made you a tonic with the amla from the trail. Drink it before you go out.", "The farm feels like the forest now. Alive. I love waking up here."],
         "first_meet": ["Oh, hello. I'm Devi. I make remedies from what the Ghats give us — if you find anything interesting on the trail, show me."],
         "default": [
           "Turmeric, neem, amla... the forest is a pharmacy, if you know where to look.",
@@ -86,6 +92,8 @@
     },
     {
       "id": "ravi",
+      "candidate": true,
+      "color": [0.3, 0.45, 0.6],
       "name": "Ravi",
       "role": "Fisherman",
       "birthday": { "season": "winter", "day": 18 },
@@ -94,6 +102,10 @@
       "dislikes": ["amaranth_greens", "methi_leaves"],
       "first_meet_gift": { "item_id": "fishing_rod", "line": "Here — take my old rod. Face the pond on your farm or the Ghats river and cast with it." },
       "dialogue": {
+        "dating": ["I keep a spot free on the riverbank for you now. Don't tell the fish."],
+        "accept_dating": ["Whoa — a garland? For me?", "Yeah. Yeah, okay! I mean — I'd really like that."],
+        "accept_proposal": ["A wedding garland?! I've got nets older than my courage, but — yes. A hundred times yes."],
+        "spouse": ["I checked the pond this morning. The tilapia say hello.", "Made breakfast. It's fish. It's always going to be fish.", "Best catch I ever made? That's easy. You."],
         "first_meet": ["Hey! New face! I'm Ravi. I spend more time on the water than on land."],
         "default": [
           "Hold the rod steady, and when the marker swings into the green, reel in!",
@@ -115,13 +127,19 @@
     },
     {
       "id": "anjali",
+      "candidate": true,
+      "color": [0.85, 0.45, 0.65],
       "name": "Anjali",
       "role": "Schoolteacher",
       "birthday": { "season": "kharif", "day": 24 },
-      "loves": ["sunflower", "bevu_bella", "custard_apple"],
+      "loves": ["sunflower", "bevu_bella", "custard_apple", "tank_kings_seal"],
       "likes": ["jasmine_flower", "carrot", "jamun", "ber", "dosa"],
       "dislikes": ["garlic", "magur"],
       "dialogue": {
+        "dating": ["The children have started asking if you're my 'special friend'. I told them to finish their sums."],
+        "accept_dating": ["Oh! A jasmine garland...", "I'd love to. The children are going to be unbearable about this."],
+        "accept_proposal": ["A wedding garland. I've written a lot of stories on that blackboard, but this is my favourite one. Yes!"],
+        "spouse": ["I'm marking papers at the kitchen table. Tell me about your day first.", "The children want a field trip to our farm. I said maybe. It's a yes.", "Coming home to you is the best part of every day."],
         "first_meet": ["Hello! I'm Anjali, I teach at the little school by the tank. The children are already talking about you."],
         "default": [
           "The children want to know what you're growing. I told them to come see for themselves.",
@@ -146,7 +164,7 @@
       "name": "Meenakshi Paati",
       "role": "Village elder",
       "birthday": { "season": "winter", "day": 3 },
-      "loves": ["sakkarai_pongal", "coconut", "wild_honey", "banana_bunch"],
+      "loves": ["sakkarai_pongal", "coconut", "wild_honey", "banana_bunch", "tank_kings_seal"],
       "likes": ["paddy_grain", "jasmine_flower", "methi_leaves", "payasam", "idli"],
       "dislikes": ["red_chilli"],
       "dialogue": {
@@ -167,6 +185,196 @@
         "festival": ["This is how Viralpadi should always feel. Everyone together."],
         "gift_loved": ["{item}! You spoil an old woman. Bless you, child."],
         "gift_disliked": ["{item}? At my age? My stomach would never forgive me."]
+      }
+    },
+    {
+      "id": "selvam",
+      "name": "Selvam",
+      "role": "Blacksmith",
+      "color": [0.55, 0.35, 0.25],
+      "birthday": { "season": "rabi", "day": 3 },
+      "loves": ["gold_ore", "iron_ore", "veg_biryani"],
+      "likes": ["copper_ore", "quartz", "masala_chai", "sugarcane", "coconut"],
+      "dislikes": ["jasmine_flower", "amaranth_greens"],
+      "first_meet_gift": { "item_id": "pickaxe", "line": "Take this pickaxe. Kanagiri Mines are east of the square — bring me ore and I'll make your tools sing." },
+      "dialogue": {
+        "first_meet": ["Hm? Oh — the farm kid. Name's Selvam. I keep the forge. Nobody's needed a real tool round here in years."],
+        "default": [
+          "Copper, iron, gold. Bring me five ore and some rupees, and I'll upgrade your hoe, watering can or pickaxe.",
+          "A better hoe tills more soil in one swing. A better can waters a whole row.",
+          "Every fifth floor of the mines has an old lift. Ride it down once you've reached a floor."
+        ],
+        "ugadi": ["New year, new blade. Everyone wants their sickle sharpened before Ugadi."],
+        "kharif": ["Monsoon rusts everything. Keep your tools dry, farmer."],
+        "rabi": ["The forge is pleasant in the cool season. Summer in here is another story."],
+        "winter": ["Cold hands, warm forge. Come stand by the fire a while."],
+        "rain": ["Rain hisses on the anvil. I like the sound."],
+        "hearts_4": ["Your tools come back to me well looked after. That's respect, that is."],
+        "hearts_8": ["My father made the lamps in the Panchayat Hall. If you bring it back, I'll forge new ones myself."],
+        "birthday": ["A gift? For me? ...Thank you. Really."],
+        "festival": ["No hammering today. Even the anvil gets a holiday."],
+        "gift_loved": ["{item}! Now this I can work with. Good find."],
+        "gift_disliked": ["{item}? What am I meant to do with this, forge it?"]
+      }
+    },
+    {
+      "id": "farida",
+      "name": "Farida",
+      "role": "Chai stall owner",
+      "color": [0.85, 0.7, 0.3],
+      "birthday": { "season": "kharif", "day": 11 },
+      "loves": ["wild_honey", "raw_mango", "amethyst"],
+      "likes": ["jasmine_flower", "curry_leaves", "coconut", "sugarcane", "okra"],
+      "dislikes": ["stone", "magur"],
+      "dialogue": {
+        "first_meet": ["Welcome, welcome! I'm Farida. Chai, coffee, vada — if you're tired, my stall is the cure."],
+        "default": [
+          "A cup of chai before the fields and you'll work till sunset.",
+          "Everyone passes my stall. Which means I hear everything. Ask me anything!",
+          "Biryani on the menu today? Only if you're very, very hungry."
+        ],
+        "ugadi": ["Mango season is starting — raw mango chutney with everything!"],
+        "kharif": ["Rain and chai. There's no better pair in the world."],
+        "rabi": ["Cool evenings mean long queues for filter coffee."],
+        "winter": ["Keep your hands around the cup. It's the best heater in Viralpadi."],
+        "rain": ["Nobody goes home when it rains — they just order another chai."],
+        "hearts_4": ["Yours is the first cup I pour every morning now. Don't tell anyone."],
+        "hearts_8": ["When I lost my husband, this stall kept me going. Now the valley does. You helped with that."],
+        "birthday": ["You remembered! Chai's on the house for a week."],
+        "festival": ["Festival days are my busiest — and my happiest."],
+        "gift_loved": ["{item}! Oh, I'll make something wonderful with this."],
+        "gift_disliked": ["{item}... I can't serve this to anyone!"]
+      }
+    },
+    {
+      "id": "gopal",
+      "name": "Gopal",
+      "role": "Dairy farmer",
+      "color": [0.95, 0.95, 0.95],
+      "birthday": { "season": "winter", "day": 22 },
+      "loves": ["sugarcane", "banana_bunch", "sakkarai_pongal"],
+      "likes": ["paddy_grain", "carrot", "radish", "jamun", "masala_chai"],
+      "dislikes": ["wild_mushroom", "red_chilli"],
+      "dialogue": {
+        "first_meet": ["Ah, you've met my cows' greatest fan — me! Gopal. I sell milk to half the valley."],
+        "default": [
+          "My cows eat better than I do. Sugarcane tops, banana leaves, fresh grass...",
+          "Pongal is the cows' festival too — Mattu Pongal. We paint their horns!",
+          "If you ever fancy keeping animals, you'll need a proper shed first. Maybe one day."
+        ],
+        "ugadi": ["Fresh grass everywhere. The herd is very happy."],
+        "kharif": ["Muddy season. My boots may never be dry again."],
+        "rabi": ["The calves were born this season. Come see them some time!"],
+        "winter": ["Winter milk is the richest. Makes the best ghee."],
+        "rain": ["The cows don't mind the rain. I mind the rain."],
+        "hearts_4": ["Lakshmi — my best cow — lets you pat her now. That's a real honour."],
+        "hearts_8": ["You're family now, as far as the herd is concerned. And me."],
+        "birthday": ["A birthday gift! The cows will be jealous."],
+        "festival": ["Music, lights and sweets — and I still had to milk at dawn!"],
+        "gift_loved": ["{item}! You really understand a farmer's heart."],
+        "gift_disliked": ["{item}? Not even the cows would eat this."]
+      }
+    },
+    {
+      "id": "arjun",
+      "name": "Arjun",
+      "role": "Postman & photographer",
+      "candidate": true,
+      "color": [0.85, 0.3, 0.3],
+      "birthday": { "season": "ugadi", "day": 9 },
+      "loves": ["filter_coffee", "amethyst", "golden_mahseer"],
+      "likes": ["watermelon", "raw_mango", "masala_chai", "medu_vada", "sunflower"],
+      "dislikes": ["methi_leaves", "tamarind"],
+      "dialogue": {
+        "first_meet": ["Post for— oh, you're the new farmer! Arjun. I deliver the letters and take pictures of everything in between."],
+        "default": [
+          "I've photographed every corner of this valley. The light at dusk by the tank is the best.",
+          "Letters come twice a week. Mostly bills. Sometimes something wonderful.",
+          "Someday I'll put together a book: 'Viralpadi, a year'. Maybe you'll be in it."
+        ],
+        "ugadi": ["New year, new roll of film. What should I shoot first?"],
+        "kharif": ["The monsoon clouds over the Ghats — nothing photographs better."],
+        "rabi": ["Mustard fields in bloom. Yellow as far as you can see."],
+        "winter": ["Mist in the mornings. Everything looks like a dream."],
+        "rain": ["My satchel is waterproof. My shoes are not."],
+        "hearts_4": ["I took a photo of you on the farm. You looked happy. I'll give you a copy."],
+        "hearts_8": ["I used to photograph the valley because it was empty and beautiful. Now I do it because it's full of people I love."],
+        "dating": ["I've run out of film. It's all pictures of you."],
+        "accept_dating": ["A jasmine garland? Hold still, I need a picture of this moment.", "...Yes. Of course yes."],
+        "accept_proposal": ["A wedding garland! I'll need a lot more film. Yes — let's do it!"],
+        "spouse": ["I developed yesterday's photos. The farm looks incredible.", "Any letters to send? I'm heading out on my round.", "Every picture on our wall is of this farm. Of us."],
+        "birthday": ["For me? This is going in the album. Thank you!"],
+        "festival": ["I'm taking a photo of everyone. Say 'payasam'!"],
+        "gift_loved": ["{item}! This is amazing — thank you!"],
+        "gift_disliked": ["{item}? Uh... it's photogenic, I suppose."]
+      }
+    },
+    {
+      "id": "kiran",
+      "name": "Dr. Kiran",
+      "role": "Village doctor",
+      "candidate": true,
+      "color": [0.6, 0.8, 0.9],
+      "birthday": { "season": "rabi", "day": 26 },
+      "loves": ["amla", "wild_honey", "kanagiri_ruby"],
+      "likes": ["turmeric_root", "carrot", "lemon_rice", "custard_apple", "idli"],
+      "dislikes": ["veg_biryani", "sugarcane"],
+      "dialogue": {
+        "first_meet": ["Hello — Dr. Kiran. I run the clinic. Please don't overdo it out there; I see far too many sunstroke farmers."],
+        "default": [
+          "Eat properly. Energy doesn't come from nowhere, you know.",
+          "Devi and I argue about herbs versus medicine. We're both right, mostly.",
+          "If you collapse in the mines at 2 am, someone has to carry you home. Please don't make it me."
+        ],
+        "ugadi": ["Heat's coming. Drink water, wear a hat."],
+        "kharif": ["Monsoon means fevers. Wash your hands!"],
+        "rabi": ["A quiet season at the clinic. I've been reading again."],
+        "winter": ["Coughs and colds. Pepper rasam — that's my prescription."],
+        "rain": ["Rain days are clinic days. Everyone slips on the steps."],
+        "hearts_4": ["I came here for a two-year posting. That was six years ago."],
+        "hearts_8": ["I used to think I was here to fix the valley. Turns out the valley fixed me."],
+        "dating": ["I've prescribed myself more walks past your farm. Doctor's orders."],
+        "accept_dating": ["A garland... I'm a doctor, I should have a calm heart rate. I don't.", "Yes. I'd like that."],
+        "accept_proposal": ["A wedding garland. My diagnosis: yes. Absolutely, completely yes."],
+        "spouse": ["I packed you lunch. Eat all of it — I'll know if you don't.", "I stopped by the clinic early. Quiet day, so I'm all yours this evening.", "You look tired. Sit. Let me make you a tea."],
+        "birthday": ["You remembered. That's... more than most of my patients do."],
+        "festival": ["I'm technically on call. But I can still enjoy the sweets."],
+        "gift_loved": ["{item}! That's thoughtful — and healthy!"],
+        "gift_disliked": ["{item}? As a doctor, I can't recommend this."]
+      }
+    },
+    {
+      "id": "meera",
+      "name": "Meera",
+      "role": "Potter",
+      "candidate": true,
+      "color": [0.75, 0.45, 0.3],
+      "birthday": { "season": "winter", "day": 8 },
+      "loves": ["quartz", "marigold_flower", "ber"],
+      "likes": ["stone", "copper_ore", "jamun", "dosa", "jasmine_flower"],
+      "dislikes": ["wild_mushroom", "garlic"],
+      "dialogue": {
+        "first_meet": ["Mind the clay! Oh — hello. I'm Meera. I make the pots, lamps and the occasional very lopsided vase."],
+        "default": [
+          "The clay by the old tank is the best in the district. The king's builders knew it too.",
+          "Every Deepavali lamp in the square came off my wheel.",
+          "Bring me pretty stones from the mines — I use them for glazes."
+        ],
+        "ugadi": ["New year pots for new year cooking. I can barely keep up!"],
+        "kharif": ["Clay won't dry in the monsoon. I spend the rains sketching."],
+        "rabi": ["Deepavali orders! A thousand little lamps, and I love every one."],
+        "winter": ["Pongal pots! The ones that boil over for luck."],
+        "rain": ["Rain means wet clay and cold tea. I'm not complaining."],
+        "hearts_4": ["I made you a cup. It's only a little lopsided. That's its charm."],
+        "hearts_8": ["When my hands are in the clay I think about the valley. Lately I think about you."],
+        "dating": ["I've been making two of everything lately. Two cups, two plates..."],
+        "accept_dating": ["A jasmine garland! I'm covered in clay, you're covered in mud — we're perfect.", "Yes!"],
+        "accept_proposal": ["A wedding garland... I'll make every pot in our kitchen. Yes!"],
+        "spouse": ["I put a new pot of marigolds by the door.", "The kiln's cooling. Want to see what came out?", "Our home is full of things I made and people I love. Well — person."],
+        "birthday": ["A birthday gift! I'm going to cry into my clay."],
+        "festival": ["All my lamps are lit tonight. Isn't it beautiful?"],
+        "gift_loved": ["{item}! Oh, I have so many ideas for this."],
+        "gift_disliked": ["{item}... I'll leave it outside for the crows."]
       }
     }
   ]

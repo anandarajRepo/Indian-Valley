@@ -1,10 +1,11 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/world/Town.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/systems/NPC.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/systems/Warp.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/systems/PanchayatHall.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/systems/FestivalStall.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/systems/NoticeBoard.gd" id="6"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
 size = Vector2(16, 16)
@@ -38,6 +39,49 @@ polygon = PackedVector2Array(-36, -36, 36, -36, 36, 20, -36, 20)
 position = Vector2(90, 52)
 color = Color(0.75, 0.3, 0.22, 1)
 polygon = PackedVector2Array(-42, 0, 42, 0, 30, -18, -30, -18)
+
+[node name="Forge" type="Polygon2D" parent="."]
+; Selvam's forge beside the mine road (decorative).
+position = Vector2(292, 150)
+color = Color(0.3, 0.24, 0.2, 1)
+polygon = PackedVector2Array(-20, -16, 20, -16, 20, 12, -20, 12)
+
+[node name="ForgeFire" type="Polygon2D" parent="."]
+position = Vector2(292, 158)
+color = Color(0.95, 0.45, 0.15, 1)
+polygon = PackedVector2Array(-6, -4, 6, -4, 6, 4, -6, 4)
+
+[node name="MineRoad" type="Polygon2D" parent="."]
+; The road east to Kanagiri Mines.
+color = Color(0.55, 0.5, 0.4, 1)
+polygon = PackedVector2Array(172, 112, 320, 112, 320, 128, 172, 128)
+
+[node name="ChaiStall" type="Polygon2D" parent="."]
+; Farida's chai kadai (decorative).
+position = Vector2(200, 30)
+color = Color(0.7, 0.35, 0.2, 1)
+polygon = PackedVector2Array(-18, -10, 18, -10, 18, 8, -18, 8)
+
+[node name="ChaiAwning" type="Polygon2D" parent="."]
+position = Vector2(200, 20)
+color = Color(0.95, 0.8, 0.3, 1)
+polygon = PackedVector2Array(-22, 0, 22, 0, 16, -8, -16, -8)
+
+[node name="NoticeBoard" type="StaticBody2D" parent="."]
+; Villagers pin their requests here — interact to read and deliver.
+position = Vector2(184, 92)
+script = ExtResource("6")
+
+[node name="NoticeBoardShape" type="CollisionShape2D" parent="NoticeBoard"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="NoticeBoardSprite" type="Polygon2D" parent="NoticeBoard"]
+color = Color(0.6, 0.45, 0.25, 1)
+polygon = PackedVector2Array(-8, -8, 8, -8, 8, 4, -8, 4)
+
+[node name="NoticeBoardPaper" type="Polygon2D" parent="NoticeBoard"]
+color = Color(0.95, 0.92, 0.8, 1)
+polygon = PackedVector2Array(-5, -6, 5, -6, 5, 2, -5, 2)
 
 [node name="PanchayatHall" type="StaticBody2D" parent="."]
 ; The crumbling Panchayat Hall — interact to open the offering baskets.
@@ -102,6 +146,9 @@ position = Vector2(160, 120)
 
 [node name="from_farm" type="Marker2D" parent="Spawns"]
 position = Vector2(160, 56)
+
+[node name="from_mines" type="Marker2D" parent="Spawns"]
+position = Vector2(292, 120)
 
 [node name="Kavitha" type="StaticBody2D" parent="."]
 ; Shopkeeper — talking to her opens the General Store.
@@ -187,6 +234,108 @@ shape = SubResource("RectangleShape2D_1")
 [node name="RaviSprite" type="Polygon2D" parent="Ravi"]
 color = Color(0.3, 0.45, 0.6, 1)
 polygon = PackedVector2Array(-6, -14, 6, -14, 6, 8, -6, 8)
+
+[node name="Selvam" type="StaticBody2D" parent="."]
+; Selvam the blacksmith — gives a pickaxe, upgrades tools.
+position = Vector2(268, 152)
+script = ExtResource("2")
+npc_id = "selvam"
+npc_name = "Selvam"
+opens_shop = true
+shop_id = "blacksmith"
+
+[node name="SelvamShape" type="CollisionShape2D" parent="Selvam"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="SelvamSprite" type="Polygon2D" parent="Selvam"]
+color = Color(0.55, 0.35, 0.25, 1)
+polygon = PackedVector2Array(-6, -14, 6, -14, 6, 8, -6, 8)
+
+[node name="Farida" type="StaticBody2D" parent="."]
+; Farida runs the chai stall.
+position = Vector2(224, 36)
+script = ExtResource("2")
+npc_id = "farida"
+npc_name = "Farida"
+opens_shop = true
+shop_id = "chai"
+
+[node name="FaridaShape" type="CollisionShape2D" parent="Farida"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="FaridaSprite" type="Polygon2D" parent="Farida"]
+color = Color(0.85, 0.7, 0.3, 1)
+polygon = PackedVector2Array(-6, -14, 6, -14, 6, 8, -6, 8)
+
+[node name="Gopal" type="StaticBody2D" parent="."]
+; Gopal the dairy farmer.
+position = Vector2(28, 128)
+script = ExtResource("2")
+npc_id = "gopal"
+npc_name = "Gopal"
+
+[node name="GopalShape" type="CollisionShape2D" parent="Gopal"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="GopalSprite" type="Polygon2D" parent="Gopal"]
+color = Color(0.95, 0.95, 0.95, 1)
+polygon = PackedVector2Array(-6, -14, 6, -14, 6, 8, -6, 8)
+
+[node name="Arjun" type="StaticBody2D" parent="."]
+; Arjun the postman and photographer.
+position = Vector2(192, 216)
+script = ExtResource("2")
+npc_id = "arjun"
+npc_name = "Arjun"
+
+[node name="ArjunShape" type="CollisionShape2D" parent="Arjun"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="ArjunSprite" type="Polygon2D" parent="Arjun"]
+color = Color(0.85, 0.3, 0.3, 1)
+polygon = PackedVector2Array(-6, -14, 6, -14, 6, 8, -6, 8)
+
+[node name="Kiran" type="StaticBody2D" parent="."]
+; Dr. Kiran runs the village clinic.
+position = Vector2(236, 140)
+script = ExtResource("2")
+npc_id = "kiran"
+npc_name = "Kiran"
+
+[node name="KiranShape" type="CollisionShape2D" parent="Kiran"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="KiranSprite" type="Polygon2D" parent="Kiran"]
+color = Color(0.6, 0.8, 0.9, 1)
+polygon = PackedVector2Array(-6, -14, 6, -14, 6, 8, -6, 8)
+
+[node name="Meera" type="StaticBody2D" parent="."]
+; Meera the potter.
+position = Vector2(60, 150)
+script = ExtResource("2")
+npc_id = "meera"
+npc_name = "Meera"
+
+[node name="MeeraShape" type="CollisionShape2D" parent="Meera"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="MeeraSprite" type="Polygon2D" parent="Meera"]
+color = Color(0.75, 0.45, 0.3, 1)
+polygon = PackedVector2Array(-6, -14, 6, -14, 6, 8, -6, 8)
+
+[node name="ToMines" type="Area2D" parent="."]
+; Road east to Kanagiri Mines.
+position = Vector2(312, 120)
+script = ExtResource("3")
+target_scene = "res://scenes/World/Mines.tscn"
+target_spawn = "from_town"
+
+[node name="ToMinesShape" type="CollisionShape2D" parent="ToMines"]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="ToMinesSprite" type="Polygon2D" parent="ToMines"]
+color = Color(0.35, 0.3, 0.26, 1)
+polygon = PackedVector2Array(-8, -12, 8, -12, 8, 12, -8, 12)
 
 [node name="ToFarm" type="Area2D" parent="."]
 ; Road back up to the farm.
