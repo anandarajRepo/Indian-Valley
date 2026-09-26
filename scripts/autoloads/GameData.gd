@@ -2,7 +2,8 @@ extends Node
 ## GameData.gd — Autoload holding global player state.
 ##
 ## Single source of truth for:
-##   gold, player name, energy, skill levels, farm progress, shipping chest
+##   gold, player name, energy, skill levels, tool upgrades, shipping chest,
+##   lifetime stats and the collection (every item the player has found)
 ##
 ## Does NOT handle saving/loading (that's SaveManager).
 ## Does NOT manage time (that's GameClock).
@@ -76,9 +77,36 @@ const DEFAULT_STATS: Dictionary = {
 	"gifts_given":        0,
 	"festivals_attended": 0,
 	"days_played":        0,
+	"rocks_broken":       0,
+	"requests_completed": 0,
 }
 
 var stats: Dictionary = DEFAULT_STATS.duplicate()
+
+# ---------------------------------------------------------------------------
+# Tool upgrades (Selvam's forge)
+# ---------------------------------------------------------------------------
+
+## Tools the blacksmith can improve.
+const UPGRADABLE_TOOLS: Array = ["hoe", "watering_can", "pickaxe"]
+
+## Level n+1 costs TOOL_UPGRADES[n]. Each level widens the hoe / watering can
+## by two tiles in a row, adds a point of pickaxe damage and saves 1 energy.
+const TOOL_UPGRADES: Array = [
+	{"name": "Copper", "ore": "copper_ore", "ore_qty": 5, "gold": 500},
+	{"name": "Iron",   "ore": "iron_ore",   "ore_qty": 5, "gold": 1500},
+	{"name": "Gold",   "ore": "gold_ore",   "ore_qty": 5, "gold": 4000},
+]
+
+var tool_levels: Dictionary = {}   ## tool item_id → level (0 = basic)
+
+# ---------------------------------------------------------------------------
+# Collection — every crop, forage find, fish, mineral and artifact found
+# ---------------------------------------------------------------------------
+
+const COLLECTION_CATEGORIES: Array = ["crop", "forage", "fish", "mineral", "artifact"]
+
+var collected: Dictionary = {}     ## item_id → true
 
 # ---------------------------------------------------------------------------
 # Godot lifecycle
@@ -188,6 +216,59 @@ func get_stat(stat: String) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
+
+func get_tool_level(tool_id: String) -> int:
+	return int(tool_levels.get(tool_id, 0))
+
+
+func tool_energy_cost(tool_id: String, base_cost: int) -> int:
+	## Upgraded tools are lighter to swing (never below 1 energy).
+	return max(1, base_cost - get_tool_level(tool_id))
+
+
+func tool_reach(tool_id: String) -> int:
+	## How many tiles in a row the hoe / watering can affects.
+	return 1 + 2 * get_tool_level(tool_id)
+
+
+func next_tool_upgrade(tool_id: String) -> Dictionary:
+	## The next upgrade's cost, or {} when the tool is maxed / not upgradable.
+	if not tool_id in UPGRADABLE_TOOLS:
+		return {}
+	var level := get_tool_level(tool_id)
+	if level >= TOOL_UPGRADES.size():
+		return {}
+	return TOOL_UPGRADES[level]
+
+
+func tool_display_name(tool_id: String) -> String:
+	var base: String = ItemDB.get_item(tool_id).get("name", tool_id)
+	var level := get_tool_level(tool_id)
+	if level <= 0:
+		return base
+	return "%s %s" % [TOOL_UPGRADES[level - 1]["name"], base]
+
+
+func set_tool_level(tool_id: String, level: int) -> void:
+	tool_levels[tool_id] = clampi(level, 0, TOOL_UPGRADES.size())
+
+# ---------------------------------------------------------------------------
+# Collection
+# ---------------------------------------------------------------------------
+
+func note_collected(item_id: String) -> void:
+	if collected.has(item_id):
+		return
+	if ItemDB.get_item(item_id).get("category", "") in COLLECTION_CATEGORIES:
+		collected[item_id] = true
+
+
+func has_collected(item_id: String) -> bool:
+	return collected.has(item_id)
+
+# ---------------------------------------------------------------------------
 # Shipping chest
 # ---------------------------------------------------------------------------
 
@@ -254,6 +335,8 @@ func reset_to_new_game() -> void:
 	_skill_xp      = {"farming": 0, "mining": 0, "foraging": 0, "fishing": 0, "combat": 0}
 	shipping_chest = []
 	stats          = DEFAULT_STATS.duplicate()
+	tool_levels    = {}
+	collected      = {}
 	emit_signal("gold_changed", gold)
 	emit_signal("energy_changed", energy_current, energy_max)
 
@@ -278,6 +361,8 @@ func to_dict() -> Dictionary:
 		"skill_xp":       _skill_xp,
 		"shipping_chest": shipping_chest,
 		"stats":          stats,
+		"tool_levels":    tool_levels,
+		"collected":      collected,
 	}
 
 
@@ -299,5 +384,10 @@ func from_dict(d: Dictionary) -> void:
 	var saved_stats: Dictionary = d.get("stats", {})
 	for key in saved_stats:
 		stats[key] = int(saved_stats[key])   # JSON numbers load as floats
+	tool_levels = {}
+	var saved_tools: Dictionary = d.get("tool_levels", {})
+	for key in saved_tools:
+		tool_levels[key] = int(saved_tools[key])
+	collected = d.get("collected", {}).duplicate()
 	emit_signal("gold_changed", gold)
 	emit_signal("energy_changed", energy_current, energy_max)

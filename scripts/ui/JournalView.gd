@@ -1,12 +1,14 @@
 extends Control
 ## JournalView.gd — the player's journal (J), shown inside the Popup layer.
 ##
-## Three tabs:
-##   Calendar  — this season's 28 days, festivals, birthdays, weather forecast
-##   Villagers — friendship hearts, birthdays and gift progress for each villager
-##   Skills    — skill levels plus lifetime stats and Hall progress
+## Five tabs:
+##   Calendar   — this season's 28 days, festivals, birthdays, weather forecast
+##   Villagers  — friendship hearts, romance, birthdays and gift progress
+##   Skills     — skill levels, tool upgrades, lifetime stats and Hall progress
+##   Collection — every crop, forage find, fish, mineral and artifact found
+##   Help       — controls and tips
 
-const TABS: Array = ["Calendar", "Villagers", "Skills"]
+const TABS: Array = ["Calendar", "Villagers", "Skills", "Collection", "Help"]
 
 var tab: int = 0
 
@@ -31,7 +33,7 @@ func _ready() -> void:
 	header.add_child(spacer)
 	for i in range(TABS.size()):
 		var b := UIKit.button(TABS[i])
-		b.custom_minimum_size = Vector2(110, 32)
+		b.custom_minimum_size = Vector2(92, 32)
 		b.toggle_mode = true
 		var idx := i
 		b.pressed.connect(func(): show_tab(idx))
@@ -61,6 +63,8 @@ func show_tab(index: int) -> void:
 		0: _build_calendar()
 		1: _build_villagers()
 		2: _build_skills()
+		3: _build_collection()
+		4: _build_help()
 
 # ---------------------------------------------------------------------------
 # Calendar
@@ -104,6 +108,11 @@ func _build_calendar() -> void:
 		if e["day"] >= GameClock.current_day:
 			upcoming.append("Day %d — %s" % [e["day"], e["name"]])
 	var note := "Coming up: " + (", ".join(upcoming) if not upcoming.is_empty() else "nothing else this season")
+	if Relationships.engaged_to != "":
+		note += "\nYour wedding with %s is in %d day(s)." % [
+			Relationships.get_name_of(Relationships.engaged_to), Relationships.days_until_wedding()]
+	if Quests.has_active():
+		note += "\nRequest: " + Quests.describe()
 	var nl := UIKit.label(note, 12)
 	nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	nl.custom_minimum_size = Vector2(700, 0)
@@ -114,7 +123,15 @@ func _build_calendar() -> void:
 # ---------------------------------------------------------------------------
 
 func _build_villagers() -> void:
-	_body.add_child(UIKit.label("Chat daily and bring gifts they love. Birthday gifts count ×8.", 12, UIKit.COL_MUTED))
+	_body.add_child(UIKit.label("Chat daily and bring gifts they love. Birthday gifts count ×8. " +
+		"♥ villagers can be courted with a Jasmine Garland at 8 hearts.", 12, UIKit.COL_MUTED))
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(720, 440)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_body.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 4)
+	scroll.add_child(list)
 	for npc in Relationships.get_all_npcs():
 		var id: String = npc["id"]
 		var row := HBoxContainer.new()
@@ -124,7 +141,10 @@ func _build_villagers() -> void:
 		var info := VBoxContainer.new()
 		info.custom_minimum_size = Vector2(250, 0)
 		var met := Relationships.has_met(id)
-		info.add_child(UIKit.label(npc["name"] if met else "???", 15, UIKit.COL_ACCENT if met else UIKit.COL_MUTED))
+		var shown: String = npc["name"] if met else "???"
+		if Relationships.is_candidate(id):
+			shown += "  ♥"
+		info.add_child(UIKit.label(shown, 15, UIKit.COL_ACCENT if met else UIKit.COL_MUTED))
 		var bday: Dictionary = npc.get("birthday", {})
 		info.add_child(UIKit.label("%s · Birthday: %s %d" % [npc.get("role", ""),
 			String(bday.get("season", "")).capitalize(), int(bday.get("day", 0))], 11, UIKit.COL_MUTED))
@@ -137,6 +157,9 @@ func _build_villagers() -> void:
 		row.add_child(hearts)
 
 		var status := []
+		var romance := Relationships.relationship_status(id)
+		if romance != "" and romance != "Single":
+			status.append(romance)
 		if Relationships.talked_today.has(id):
 			status.append("Chatted")
 		if Relationships.gifted_today.has(id):
@@ -145,7 +168,7 @@ func _build_villagers() -> void:
 			status.append("Birthday!")
 		row.add_child(UIKit.label(", ".join(status) if not status.is_empty() else "—", 12,
 			UIKit.COL_GOOD if not status.is_empty() else UIKit.COL_MUTED))
-		_body.add_child(row)
+		list.add_child(row)
 
 # ---------------------------------------------------------------------------
 # Skills & stats
@@ -166,7 +189,12 @@ func _build_skills() -> void:
 		row.add_child(UIKit.label("%d / %d xp" % [xp, needed], 12, UIKit.COL_MUTED))
 		_body.add_child(row)
 
-	_body.add_child(UIKit.label("This save", 16, UIKit.COL_ACCENT))
+	var tools: Array = []
+	for tool_id in GameData.UPGRADABLE_TOOLS:
+		tools.append(GameData.tool_display_name(tool_id))
+	_body.add_child(UIKit.label("Tools: " + ", ".join(tools), 13))
+
+	_body.add_child(UIKit.label("This save — %s" % GameData.player_name, 16, UIKit.COL_ACCENT))
 	var gm = GameManager.instance
 	var bundles_done: int = gm.hall_state.get("completed", {}).size() if gm else 0
 	var lines := [
@@ -177,7 +205,67 @@ func _build_skills() -> void:
 		"Items foraged: %d" % GameData.get_stat("items_foraged"),
 		"Gifts given: %d" % GameData.get_stat("gifts_given"),
 		"Festivals entered: %d" % GameData.get_stat("festivals_attended"),
+		"Rocks broken: %d · deepest mine floor: %d" % [GameData.get_stat("rocks_broken"),
+			int(gm.mine_state.get("deepest", 0)) if gm else 0],
+		"Villager requests answered: %d" % GameData.get_stat("requests_completed"),
 		"Panchayat Hall offerings: %d / %d" % [bundles_done, ItemDB.get_bundles().size()],
 	]
 	for line in lines:
 		_body.add_child(UIKit.label(line, 13))
+
+# ---------------------------------------------------------------------------
+# Collection
+# ---------------------------------------------------------------------------
+
+const COLLECTION_GROUPS: Array = [
+	["Crops", "crop"], ["Forage", "forage"], ["Fish", "fish"],
+	["Minerals & gems", "mineral"], ["Artifacts", "artifact"],
+]
+
+
+func _build_collection() -> void:
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(720, 470)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_body.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 6)
+	scroll.add_child(list)
+
+	for group in COLLECTION_GROUPS:
+		var items: Array = ItemDB.get_all_items().filter(func(i): return i.get("category", "") == group[1])
+		var found := items.filter(func(i): return GameData.has_collected(i["id"]))
+		list.add_child(UIKit.label("%s  %d / %d" % [group[0], found.size(), items.size()], 15, UIKit.COL_ACCENT))
+		var names: Array = []
+		for item in items:
+			names.append(item["name"] if GameData.has_collected(item["id"]) else "???")
+		var l := UIKit.label(", ".join(names), 12)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(700, 0)
+		list.add_child(l)
+
+# ---------------------------------------------------------------------------
+# Help
+# ---------------------------------------------------------------------------
+
+const HELP_LINES: Array = [
+	"Move: WASD / arrows   ·   Use tool, plant, eat: left-click or X   ·   Interact / talk: Z or Enter",
+	"Hotbar: 1–5 or Q / E   ·   Inventory: I / T   ·   Journal: J   ·   Pause & options: Esc   ·   Sleep at home: F",
+	"",
+	"Farming — till with the hoe, plant in-season seeds, water every day (rain does it for you), harvest with the sickle and ship crops in the chest by the farmhouse. Crops wither when their season ends.",
+	"Energy — tools cost energy. Eat food or edible forage to recover. At 0 energy or 2 am you pass out; away from home you'll wake with half energy.",
+	"Villagers — chat once a day and give one gift a day. Birthdays count ×8. Answer requests on the town notice board.",
+	"Romance — ♥ villagers stop at 8 hearts until you give a Jasmine Garland (Kavitha's store). At 10 hearts, a Wedding Garland is a proposal.",
+	"Fishing — Ravi gives you a rod. Face the pond or river, cast, wait for the bite, reel in when the marker is in the green.",
+	"Mines — Selvam gives you a pickaxe. Kanagiri Mines are east of the square. Break rocks to find ore, gems and the ladder down; every 5th floor unlocks the old lift.",
+	"Forge — bring ore and rupees to Selvam to upgrade your hoe, watering can and pickaxe.",
+	"Panchayat Hall — fill all seven offering baskets to restore the Hall.",
+]
+
+
+func _build_help() -> void:
+	for line in HELP_LINES:
+		var l := UIKit.label(line, 12)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(700, 0)
+		_body.add_child(l)

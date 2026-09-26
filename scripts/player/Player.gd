@@ -158,7 +158,7 @@ func _use_tool() -> void:
 		return
 
 	# Check energy
-	var energy_cost = item_data.get("energy_cost", 1)
+	var energy_cost := GameData.tool_energy_cost(held_item["item_id"], int(item_data.get("energy_cost", 1)))
 	if not GameData.spend_energy(energy_cost):
 		_notify("You're too tired...")
 		return
@@ -232,8 +232,11 @@ func _interact() -> void:
 # ---------------------------------------------------------------------------
 
 func _try_sleep() -> void:
-	## Player presses F near their bed — only allowed at home
-	## For now we trigger sleep directly (bed detection comes later)
+	## F sleeps straight away, but only at home on the farm.
+	var world := get_parent()
+	if world == null or world.name != "Farm":
+		_notify("You can only sleep at home on the farm")
+		return
 	GameClock._trigger_sleep()
 
 

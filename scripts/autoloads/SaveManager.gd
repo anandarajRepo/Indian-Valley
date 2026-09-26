@@ -8,9 +8,11 @@ extends Node
 
 const SAVE_DIR:   String = "user://saves/"
 const SLOT_COUNT: int    = 3
-const VERSION:    int    = 2   ## Increment on breaking save format changes
+const VERSION:    int    = 3   ## Increment on breaking save format changes
 ## v2 (Phase 2 — Alpha): adds "weather", "social", "calendar", "world", "hall"
 ##     sections and player "stats". v1 saves load with fresh defaults for these.
+## v3 (Phase 3 — Beta): adds "quests" and "mines" sections, player
+##     "tool_levels" / "collected", and romance fields in "social".
 
 signal save_completed(slot: int)
 signal load_completed(slot: int)
@@ -50,6 +52,7 @@ func save_game(slot: int, extra_data: Dictionary = {}) -> bool:
 		"weather":  Weather.to_dict(),
 		"social":   Relationships.to_dict(),
 		"calendar": Calendar.to_dict(),
+		"quests":   Quests.to_dict(),
 	}
 
 	# Merge any extra scene-specific data (e.g. farm tiles, NPC states)
@@ -109,6 +112,7 @@ func load_game(slot: int) -> bool:
 	Relationships.from_dict(data.get("social", {}))
 	Calendar.from_dict(data.get("calendar", {}))
 	Weather.from_dict(data.get("weather", {}))
+	Quests.from_dict(data.get("quests", {}))
 
 	# Stash the full payload so the manager can restore farm tiles / inventory.
 	last_loaded = data
@@ -142,11 +146,34 @@ func get_slot_info(slot: int) -> Dictionary:
 		"slot":       slot,
 		"saved_at":   data.get("saved_at", ""),
 		"player_name":player.get("player_name", ""),
-		"day":        clock.get("day", 1),
-		"season":     clock.get("season", 0),
-		"year":       clock.get("year", 1),
-		"gold":       player.get("gold", 0),
+		"day":        int(clock.get("day", 1)),
+		"season":     int(clock.get("season", 0)),
+		"year":       int(clock.get("year", 1)),
+		"gold":       int(player.get("gold", 0)),
 	}
+
+
+func describe_slot(slot: int) -> String:
+	## One-line summary for the slot picker, e.g. "Arya — Day 3, Kharif, Year 1 · ₹1200".
+	var info := get_slot_info(slot)
+	if info.is_empty():
+		return "Empty"
+	return "%s — Day %d, %s, Year %d · ₹%d" % [info["player_name"], info["day"],
+		GameClock.SEASON_NAMES.get(info["season"], "?"), info["year"], info["gold"]]
+
+
+func most_recent_slot() -> int:
+	## The slot saved most recently, or -1 when there are no saves.
+	var best := -1
+	var best_time := ""
+	for slot in range(SLOT_COUNT):
+		var info := get_slot_info(slot)
+		if info.is_empty():
+			continue
+		if best == -1 or String(info["saved_at"]) > best_time:
+			best = slot
+			best_time = info["saved_at"]
+	return best
 
 
 func slot_exists(slot: int) -> bool:
@@ -172,6 +199,11 @@ func _migrate(data: Dictionary, from_version: int) -> Dictionary:
 	if from_version < 2:
 		# v1 → v2: new sections simply start empty; loaders fill in defaults.
 		for key in ["weather", "social", "calendar", "world", "hall"]:
+			if not data.has(key):
+				data[key] = {}
+	if from_version < 3:
+		# v2 → v3: quests and mines start empty; tools unupgraded; romance fresh.
+		for key in ["quests", "mines"]:
 			if not data.has(key):
 				data[key] = {}
 	data["version"] = VERSION

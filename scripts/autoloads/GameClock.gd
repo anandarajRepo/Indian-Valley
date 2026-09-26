@@ -74,6 +74,10 @@ var current_year: int   = 1
 ## worrying about season/year wrap-around.
 var days_elapsed: int   = 0
 
+## Multiplier on real seconds per in-game minute (1.5 = the "relaxed clock"
+## setting). Set by the Settings autoload.
+var time_scale: float = 1.0
+
 var _elapsed: float = 0.0
 var _paused:  bool  = false
 
@@ -90,8 +94,9 @@ func _process(delta: float) -> void:
 		return
 
 	_elapsed += delta
-	if _elapsed >= SECONDS_PER_INGAME_MINUTE:
-		_elapsed -= SECONDS_PER_INGAME_MINUTE
+	var minute_len := SECONDS_PER_INGAME_MINUTE * time_scale
+	if _elapsed >= minute_len:
+		_elapsed -= minute_len
 		_advance_minute()
 
 # ---------------------------------------------------------------------------

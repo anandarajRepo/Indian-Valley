@@ -1,7 +1,7 @@
 extends CanvasLayer
-## Popup.gd — the single modal overlay for dialogue, choices, shop, inventory,
-## the journal, fishing, the Panchayat Hall board, the day summary, and the
-## pause menu. Only one modal is ever open at a time.
+## Popup.gd — the single modal overlay for dialogue, choices, shops, the forge,
+## inventory, the journal, fishing, the Panchayat Hall board, the day summary,
+## options and the pause menu. Only one modal is ever open at a time.
 ##
 ## Lives as a persistent child of Main (layer 20, above the HUD). Opening any
 ## modal pauses the game clock; closing resumes it (while in a playable world).
@@ -10,8 +10,9 @@ extends CanvasLayer
 const JournalView    = preload("res://scripts/ui/JournalView.gd")
 const HallView       = preload("res://scripts/ui/HallView.gd")
 const FishingMinigame = preload("res://scripts/ui/FishingMinigame.gd")
+const BlacksmithView = preload("res://scripts/ui/BlacksmithView.gd")
 
-enum Mode { NONE, DIALOGUE, SHOP, INVENTORY, SUMMARY, PAUSE, CHOICE, FISHING, JOURNAL, HALL }
+enum Mode { NONE, DIALOGUE, SHOP, INVENTORY, SUMMARY, PAUSE, CHOICE, FISHING, JOURNAL, HALL, BLACKSMITH, OPTIONS }
 
 var _mode: int = Mode.NONE
 
@@ -31,6 +32,9 @@ var _input_enabled: bool   = false   ## Guards against the opening keypress adva
 # --- Views hosted in _content ---------------------------------------------
 var _journal: Control = null
 var _fishing: Control = null
+
+## Runs after the day summary closes (the demo ending uses this).
+var _summary_on_close: Callable = Callable()
 
 # --- Theme (shared with the other views via UIKit) --------------------------
 const COL_TEXT:   Color = UIKit.COL_TEXT
@@ -107,7 +111,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# Esc closes any open modal, or opens the pause menu from gameplay.
 	if event.is_action_pressed("ui_cancel"):
-		if _mode != Mode.NONE:
+		if _mode == Mode.SUMMARY:
+			_close_summary()
+		elif _mode != Mode.NONE:
 			close_all()
 		elif gm != null and gm.in_game:
 			open_pause_menu()
@@ -133,7 +139,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_advance_dialogue()
 				get_viewport().set_input_as_handled()
 			Mode.SUMMARY:
-				close_all()
+				_close_summary()
 				get_viewport().set_input_as_handled()
 			Mode.FISHING:
 				if _fishing:
@@ -303,44 +309,37 @@ func open_hall() -> void:
 	view.close_requested.connect(close_all)
 	_content.add_child(view)
 
+
+func open_blacksmith() -> void:
+	_open(Mode.BLACKSMITH)
+	var view := BlacksmithView.new()
+	view.close_requested.connect(close_all)
+	_content.add_child(view)
+
 # ---------------------------------------------------------------------------
 # Shop
 # ---------------------------------------------------------------------------
 
-func open_shop() -> void:
+func open_shop(shop_id: String = "general") -> void:
 	_open(Mode.SHOP)
-	_build_shop()
+	_build_shop(shop_id)
 
 
-func _shop_stock() -> Array:
-	## Seeds for the current season, plus staple tools/food, in a stable order.
-	var stock: Array = []
-	var season_name := GameClock.get_season_name().to_lower()
-	for crop in ItemDB.get_all_crops():
-		if season_name in crop.get("seasons", []):
-			var seed_id: String = crop.get("seed_id", "")
-			var seed_item = ItemDB.get_item(seed_id)
-			if not seed_item.is_empty() and not stock.has(seed_id):
-				stock.append(seed_id)
-	# A few always-available staples.
-	for staple in ["idli", "dosa", "banana_leaf_rice"]:
-		if not ItemDB.get_item(staple).is_empty():
-			stock.append(staple)
-	return stock
-
-
-func _build_shop() -> void:
+func _build_shop(shop_id: String) -> void:
+	var gm = GameManager.instance
 	var panel := _make_panel(Vector2(620, 600), Vector2(330, 60))
 	_content.add_child(panel)
 
 	var box := _make_vbox(panel, 8)
 
-	var title := _make_label("Kavitha's General Store", 20)
+	var title := _make_label(GameManager.SHOP_TITLES.get(shop_id, "Shop"), 20)
 	title.add_theme_color_override("font_color", COL_ACCENT)
 	box.add_child(title)
 
-	var subtitle := _make_label("Fresh %s stock" % GameClock.get_season_name(), 12)
-	box.add_child(subtitle)
+	var subtitle_text := "Fresh %s stock" % GameClock.get_season_name()
+	if shop_id == "chai":
+		subtitle_text = "Hot food to keep your energy up"
+	box.add_child(_make_label(subtitle_text, 12))
 
 	var gold_label := _make_label("Your gold: %d" % GameData.gold, 14)
 	box.add_child(gold_label)
@@ -355,7 +354,7 @@ func _build_shop() -> void:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(list)
 
-	for item_id in _shop_stock():
+	for item_id in (gm.shop_stock(shop_id) if gm else []):
 		list.add_child(_build_shop_row(item_id, gold_label))
 
 	var close_btn := _make_button("Close  (Esc)")
@@ -371,7 +370,10 @@ func _build_shop_row(item_id: String, gold_label: Label) -> Control:
 	row.add_theme_constant_override("separation", 10)
 	row.custom_minimum_size = Vector2(560, 34)
 
-	var name_label := _make_label(item.get("name", item_id), 14)
+	var shown_name: String = item.get("name", item_id)
+	if item.has("energy_restore"):
+		shown_name += "  (+%d energy)" % int(item["energy_restore"])
+	var name_label := _make_label(shown_name, 14)
 	name_label.custom_minimum_size = Vector2(300, 0)
 	row.add_child(name_label)
 
@@ -470,16 +472,22 @@ func show_day_summary(report: Dictionary) -> void:
 	_open(Mode.SUMMARY)
 	# on_overnight resumed the clock via end_day(); keep it paused for the summary.
 	GameClock.pause()
+	_summary_on_close = Callable()
+	if report.get("demo_end", false) and GameManager.instance:
+		_summary_on_close = GameManager.instance.finish_demo
 
 	var review: Dictionary = report.get("year_review", {})
-	var height := 470 if review.is_empty() else 640
+	var height := 490 if review.is_empty() else 660
 	var panel := _make_panel(Vector2(620, height), Vector2(330, (720 - height) / 2))
 	_content.add_child(panel)
 
 	var box := _make_vbox(panel, 8)
 
 	var title_text := "You slept until morning"
-	if report.get("new_year", false):
+	var wedding: String = report.get("wedding", "")
+	if wedding != "":
+		title_text = "Your wedding day with %s!" % Relationships.get_name_of(wedding)
+	elif report.get("new_year", false):
 		title_text = "Happy Ugadi — a new year begins!"
 	elif report.get("new_season", false):
 		title_text = "%s has arrived" % GameClock.get_season_name()
@@ -500,6 +508,12 @@ func show_day_summary(report: Dictionary) -> void:
 	box.add_child(_make_label("Gold:  ₹%d" % GameData.gold, 15))
 
 	var notes: Array = []
+	if wedding != "":
+		notes.append("The whole village gathered in the square. %s moves onto the farm today." % Relationships.get_name_of(wedding))
+	if report.get("passed_out", false):
+		notes.append("You passed out far from home. Someone carried you back — you're only half rested.")
+	if report.get("spouse_help", "") != "":
+		notes.append(report["spouse_help"])
 	if report.get("rain_watered", false):
 		notes.append("The rain watered your crops.")
 	var withered := int(report.get("withered", 0))
@@ -512,6 +526,8 @@ func show_day_summary(report: Dictionary) -> void:
 		notes.append("Today is %s! Head to the town square." % festival.get("name", "a festival"))
 	for bday in report.get("birthdays", []):
 		notes.append("It's %s's birthday today." % bday)
+	if report.get("request", "") != "":
+		notes.append("Notice board: " + report["request"])
 	for note in notes:
 		var l := _make_label("•  " + note, 13)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -521,9 +537,21 @@ func show_day_summary(report: Dictionary) -> void:
 	if not review.is_empty():
 		box.add_child(_build_year_review(review))
 
-	var cont := _make_button("Start the day  (Z / Enter)")
-	cont.pressed.connect(close_all)
+	if report.get("demo_end", false):
+		var demo := _make_label("This is the end of the demo — thank you for playing!", 14)
+		demo.add_theme_color_override("font_color", COL_ACCENT)
+		box.add_child(demo)
+	var cont := _make_button("Finish the demo  (Z / Enter)" if report.get("demo_end", false) else "Start the day  (Z / Enter)")
+	cont.pressed.connect(_close_summary)
 	box.add_child(cont)
+
+
+func _close_summary() -> void:
+	var cb := _summary_on_close
+	_summary_on_close = Callable()
+	close_all()
+	if cb.is_valid():
+		cb.call()
 
 
 func _build_year_review(review: Dictionary) -> Control:
@@ -540,9 +568,13 @@ func _build_year_review(review: Dictionary) -> Control:
 			int(review.get("harvested", 0)), int(review.get("fish", 0)), int(review.get("foraged", 0))],
 		"Entered %d festivals · %d close friends (4+ hearts)" % [
 			int(review.get("festivals", 0)), int(review.get("friends", 0))],
+		"Deepest mine floor: %d · requests answered: %d" % [
+			int(review.get("deepest", 0)), int(review.get("requests", 0))],
 		hall_line,
 	]:
 		col.add_child(_make_label(line, 13))
+	if review.get("spouse", "") != "":
+		col.add_child(_make_label("Married to %s" % review["spouse"], 13))
 	return col
 
 # ---------------------------------------------------------------------------
@@ -552,7 +584,7 @@ func _build_year_review(review: Dictionary) -> Control:
 func open_pause_menu() -> void:
 	_open(Mode.PAUSE)
 
-	var panel := _make_panel(Vector2(360, 370), Vector2(460, 175))
+	var panel := _make_panel(Vector2(360, 420), Vector2(460, 150))
 	_content.add_child(panel)
 
 	var box := _make_vbox(panel, 14)
@@ -572,6 +604,13 @@ func open_pause_menu() -> void:
 	)
 	box.add_child(journal_btn)
 
+	var options_btn := _make_button("Options")
+	options_btn.pressed.connect(func():
+		close_all()
+		open_options()
+	)
+	box.add_child(options_btn)
+
 	var save_btn := _make_button("Save Game")
 	save_btn.pressed.connect(func():
 		if GameManager.instance and GameManager.instance.save_game():
@@ -587,6 +626,40 @@ func open_pause_menu() -> void:
 			GameManager.instance.show_main_menu()
 	)
 	box.add_child(menu_btn)
+
+# ---------------------------------------------------------------------------
+# Options (also reachable from the title screen)
+# ---------------------------------------------------------------------------
+
+func open_options() -> void:
+	_open(Mode.OPTIONS)
+	var panel := _make_panel(Vector2(440, 300), Vector2(420, 210))
+	_content.add_child(panel)
+	var box := _make_vbox(panel, 14)
+
+	var title := _make_label("Options", 22)
+	title.add_theme_color_override("font_color", COL_ACCENT)
+	box.add_child(title)
+
+	var fullscreen := CheckButton.new()
+	fullscreen.text = "Fullscreen"
+	fullscreen.button_pressed = Settings.fullscreen
+	fullscreen.toggled.connect(func(on: bool): Settings.set_fullscreen(on))
+	box.add_child(fullscreen)
+
+	var relaxed := CheckButton.new()
+	relaxed.text = "Relaxed clock (days last 50% longer)"
+	relaxed.button_pressed = Settings.relaxed_clock
+	relaxed.toggled.connect(func(on: bool): Settings.set_relaxed_clock(on))
+	box.add_child(relaxed)
+
+	var hint := _make_label("Controls and tips are in the journal's Help tab (J).", 12)
+	box.add_child(hint)
+
+	var close_btn := _make_button("Close  (Esc)")
+	close_btn.pressed.connect(close_all)
+	box.add_child(close_btn)
+	fullscreen.grab_focus()
 
 # ---------------------------------------------------------------------------
 # UI helpers

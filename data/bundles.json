@@ -67,6 +67,19 @@
         { "item_id": "karimeen", "quantity": 1 }
       ],
       "reward": { "gold": 800, "text": "₹800" }
+    },
+    {
+      "id": "kanagiri_treasures",
+      "name": "Kanagiri Treasures",
+      "hint": "Ore and stone from deep in the mines.",
+      "items": [
+        { "item_id": "copper_ore", "quantity": 10 },
+        { "item_id": "iron_ore",   "quantity": 5 },
+        { "item_id": "gold_ore",   "quantity": 3 },
+        { "item_id": "quartz",     "quantity": 1 },
+        { "item_id": "amethyst",   "quantity": 1 }
+      ],
+      "reward": { "gold": 1200, "items": [{ "item_id": "veg_biryani", "quantity": 3 }], "text": "₹1200 and 3 Veg Biryani" }
     }
   ],
   "completion": {

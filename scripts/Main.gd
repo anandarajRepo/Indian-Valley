@@ -3,7 +3,7 @@ class_name GameManager
 ## Main.gd — the persistent game manager and root of the scene tree.
 ##
 ## Responsibilities:
-##   - Owns the swappable "world" scenes (MainMenu ↔ Farm ↔ Town ↔ Trail) loaded into
+##   - Owns the swappable "world" scenes (MainMenu ↔ Farm ↔ Town ↔ Trail ↔ Mines) loaded into
 ##     the CurrentScene container, so autoloads and the persistent UI survive.
 ##   - High-level flow: new game, continue, quit, scene transitions.
 ##   - Cross-scene state that must outlive any single scene:
@@ -11,11 +11,14 @@ class_name GameManager
 ##       * inventory_data — the player's inventory (survives Farm↔Town trips)
 ##       * forage_data    — today's forageable spawns per location
 ##       * hall_state     — Panchayat Hall offerings (bundles)
+##       * mine_state     — current / deepest Kanagiri Mines floor
 ##       * spawn_target   — which spawn marker the next world should use
 ##   - Overnight simulation (crop growth, season withering, rain, forage
 ##     respawn) + save/load orchestration.
 ##   - Gameplay services shared by several scenes: fishing, foraging, festival
-##     offerings and Hall donations.
+##     offerings, Hall donations, the mines, shops and Selvam's tool upgrades.
+##   - The mornings after: weddings, your spouse's help, waking up at home,
+##     and (in demo builds) the end of the demo after Year 1.
 ##
 ## Accessed from anywhere via the static `GameManager.instance`.
 
@@ -33,6 +36,7 @@ const MAIN_MENU_SCENE: String = "res://scenes/UI/MainMenu.tscn"
 const FARM_SCENE:      String = "res://scenes/World/Farm.tscn"
 const TOWN_SCENE:      String = "res://scenes/World/Town.tscn"
 const TRAIL_SCENE:     String = "res://scenes/World/GhatsTrail.tscn"
+const MINES_SCENE:     String = "res://scenes/World/Mines.tscn"
 
 ## Where forageables can appear each morning, per location (tile rects).
 const FORAGE_AREAS: Dictionary = {
@@ -40,6 +44,27 @@ const FORAGE_AREAS: Dictionary = {
 }
 const FORAGE_MIN: int = 4
 const FORAGE_MAX: int = 6
+
+## What each shop sells beyond Kavitha's seasonal seeds (see shop_stock()).
+const GENERAL_STAPLES: Array = ["idli", "dosa", "banana_leaf_rice", "jasmine_garland"]
+const CHAI_MENU: Array = ["masala_chai", "filter_coffee", "medu_vada", "lemon_rice", "veg_biryani"]
+const SHOP_TITLES: Dictionary = {
+	"general": "Kavitha's General Store",
+	"chai":    "Farida's Chai Kadai",
+}
+
+const INTRO_LINES: Array = [
+	"A letter was waiting on the farmhouse table...",
+	"\"My dear one — if you're reading this, the farm is yours now. It has been quiet too long.\"",
+	"\"The soil remembers kindness. So do the people of Viralpadi. Go and meet them.\"",
+	"\"And if you can, help Meenakshi bring the old Panchayat Hall back to life.\" — Paati Amma",
+	"(Till with the hoe, plant seeds, water daily, and ship crops in the chest. Press J for your journal, Esc for help and options.)",
+]
+const DEMO_END_LINES: Array = [
+	"And so your first year in Viralpadi Valley comes to a close.",
+	"Thank you for playing the Indian Valley demo!",
+	"The full game continues into Year 2 and beyond — with more to discover in the valley.",
+]
 
 # ---------------------------------------------------------------------------
 # Signals
@@ -70,6 +95,15 @@ var forage_data: Dictionary = {}
 ##   { "donated": { bundle_id: { item_id: qty } }, "completed": { bundle_id: true },
 ##     "restored": bool, "intro_seen": bool }
 var hall_state: Dictionary = {}
+
+## Kanagiri Mines: { "floor": int (0 = entrance), "deepest": int, "seal_found": bool }
+var mine_state: Dictionary = {}
+
+## Extra location text for the HUD (e.g. the mine floor), set by the world.
+var location_note: String = ""
+
+## Force demo mode on/off in tests (-1 = decide from the build).
+var demo_override: int = -1
 
 ## Which spawn marker a freshly loaded world should place the player at.
 var spawn_target: String = "default"
@@ -140,27 +174,49 @@ func goto_town(spawn: String = "default") -> void:
 func goto_trail(spawn: String = "default") -> void:
 	goto_world(TRAIL_SCENE, spawn)
 
+
+func goto_mines(spawn: String = "from_town") -> void:
+	goto_world(MINES_SCENE, spawn)
+
+
+func get_active_world() -> Node:
+	var count := current_scene_node.get_child_count()
+	for i in range(count - 1, -1, -1):
+		var child := current_scene_node.get_child(i)
+		if not child.is_queued_for_deletion():
+			return child
+	return null
+
 # ---------------------------------------------------------------------------
 # Flow: main menu / new game / continue / quit
 # ---------------------------------------------------------------------------
 
 func show_main_menu() -> void:
 	in_game = false
+	location_note = ""
 	GameClock.pause()
 	_update_ui_visibility()
 	emit_signal("game_state_changed", in_game)
 	call_deferred("_load_scene", MAIN_MENU_SCENE)
 
 
-func new_game() -> void:
+func new_game(slot: int = -1, player_name: String = "") -> void:
+	## Start fresh in `slot` (default: the current slot). The intro letter plays
+	## once the farm has loaded.
+	if slot >= 0:
+		current_slot = slot
 	GameClock.reset_to_new_game()
 	GameData.reset_to_new_game()
+	if player_name.strip_edges() != "":
+		GameData.player_name = player_name.strip_edges().left(16)
 	Calendar.reset_to_new_game()
 	Relationships.reset_to_new_game()
 	Weather.reset_to_new_game()
+	Quests.reset_to_new_game()
 	farm_tiles = {}
 	inventory_data = {}
 	hall_state = _default_hall_state()
+	mine_state = _default_mine_state()
 	generate_forage()
 	spawn_target = "default"
 	in_game = true
@@ -168,6 +224,16 @@ func new_game() -> void:
 	emit_signal("game_state_changed", in_game)
 	GameClock.resume()
 	call_deferred("_load_scene", FARM_SCENE)
+	call_deferred("_play_intro")
+
+
+func _play_intro() -> void:
+	show_dialogue("Grandmother's letter", INTRO_LINES)
+
+
+func load_slot(slot: int) -> bool:
+	current_slot = slot
+	return continue_game()
 
 
 func continue_game() -> bool:
@@ -186,6 +252,11 @@ func continue_game() -> bool:
 	hall_state = _default_hall_state()
 	for key in data.get("hall", {}):
 		hall_state[key] = data["hall"][key]
+	mine_state = _default_mine_state()
+	for key in data.get("mines", {}):
+		mine_state[key] = data["mines"][key]
+	mine_state["floor"] = 0
+	mine_state["deepest"] = int(mine_state.get("deepest", 0))
 	spawn_target = "default"
 	in_game = true
 	_update_ui_visibility()
@@ -197,6 +268,10 @@ func continue_game() -> bool:
 
 func has_save() -> bool:
 	return SaveManager.slot_exists(current_slot)
+
+
+func has_any_save() -> bool:
+	return SaveManager.most_recent_slot() != -1
 
 
 func quit_game() -> void:
@@ -212,6 +287,7 @@ func save_game() -> bool:
 		"inventory": inventory_data,
 		"world":     {"forage": forage_data},
 		"hall":      hall_state,
+		"mines":     mine_state,
 	}
 	return SaveManager.save_game(current_slot, extra)
 
@@ -233,11 +309,68 @@ func on_overnight(earnings: int) -> void:
 	report["forecast"]  = Weather.tomorrow
 	report["festival"]  = Calendar.festival_today()
 	report["birthdays"] = Relationships.birthdays_today()
+	report["wedding"]   = Relationships.check_wedding()
+	if report["wedding"] == "":
+		report["spouse_help"] = apply_spouse_help()
+	report["request"]   = Quests.describe()
+	report["passed_out"] = _wake_at_home()
 	if report["new_year"]:
 		report["year_review"] = build_year_review(GameClock.current_year - 1)
-	save_game()
+		report["demo_end"] = is_demo()
+	# The demo ends after Year 1; keep the last save on Winter 28 instead.
+	if not report.get("demo_end", false):
+		save_game()
 	if popup and popup.has_method("show_day_summary"):
 		popup.show_day_summary(report)
+
+
+func _wake_at_home() -> bool:
+	## Everyone wakes up at home. Returns true if the player passed out away
+	## from the farm (they wake with only half their energy).
+	mine_state["floor"] = 0
+	var world := get_active_world()
+	if world == null or world.name == "Farm" or not in_game:
+		return false
+	GameData.energy_current = GameData.energy_max / 2
+	GameData.emit_signal("energy_changed", GameData.energy_current, GameData.energy_max)
+	goto_farm("default")
+	return true
+
+
+func apply_spouse_help() -> String:
+	## Your spouse sometimes waters the crops or leaves you breakfast.
+	## Returns a line for the day summary ("" when nothing happened).
+	var spouse := Relationships.spouse
+	if spouse == "":
+		return ""
+	var spouse_name := Relationships.get_name_of(spouse)
+	var roll := randf()
+	if roll < 0.35 and not Weather.is_raining():
+		var watered := 0
+		for key in farm_tiles:
+			var data: Dictionary = farm_tiles[key]
+			if data.get("state", "") == "planted":
+				data["watered_day"] = GameClock.days_elapsed
+				watered += 1
+		if watered > 0:
+			emit_signal("farm_updated")
+			return "%s watered all the crops this morning." % spouse_name
+	if roll < 0.65:
+		var meal: String = ["idli", "dosa", "masala_chai", "lemon_rice"][randi() % 4]
+		if give_item(meal, 1):
+			return "%s made you %s for breakfast." % [spouse_name, ItemDB.get_item(meal).get("name", meal)]
+	return ""
+
+
+func is_demo() -> bool:
+	if demo_override != -1:
+		return demo_override == 1
+	return OS.has_feature("demo") or bool(ProjectSettings.get_setting("indian_valley/demo_build", false))
+
+
+func finish_demo() -> void:
+	## Called when the Year 1 summary closes in a demo build.
+	show_dialogue("Indian Valley", DEMO_END_LINES, func(): show_main_menu())
 
 
 func advance_farm_day() -> int:
@@ -302,6 +435,9 @@ func build_year_review(year: int) -> Dictionary:
 		"bundles_done": hall_state.get("completed", {}).size(),
 		"bundles_total":ItemDB.get_bundles().size(),
 		"restored":     hall_state.get("restored", false),
+		"deepest":      int(mine_state.get("deepest", 0)),
+		"requests":     GameData.get_stat("requests_completed"),
+		"spouse":       Relationships.get_name_of(Relationships.spouse) if Relationships.spouse != "" else "",
 	}
 
 # ---------------------------------------------------------------------------
@@ -403,6 +539,72 @@ func on_fishing_finished(fish_id: String) -> void:
 
 func _default_hall_state() -> Dictionary:
 	return {"donated": {}, "completed": {}, "restored": false, "intro_seen": false}
+
+# ---------------------------------------------------------------------------
+# Kanagiri Mines
+# ---------------------------------------------------------------------------
+
+func _default_mine_state() -> Dictionary:
+	return {"floor": 0, "deepest": 0, "seal_found": false}
+
+
+func enter_mine_floor(floor_num: int) -> void:
+	## Travel to a mine floor (0 = the entrance) by ladder or lift.
+	floor_num = clampi(floor_num, 0, 20)
+	mine_state["floor"] = floor_num
+	mine_state["deepest"] = maxi(int(mine_state.get("deepest", 0)), floor_num)
+	goto_world(MINES_SCENE, "from_above" if floor_num > 0 else "from_below")
+
+
+func lift_floors() -> Array:
+	## Floors the old lift can reach (every 5th floor you've been to).
+	var floors: Array = []
+	var f := 5
+	while f <= int(mine_state.get("deepest", 0)):
+		floors.append(f)
+		f += 5
+	return floors
+
+# ---------------------------------------------------------------------------
+# Shops and the forge
+# ---------------------------------------------------------------------------
+
+func shop_stock(shop_id: String) -> Array:
+	## Item ids for sale, in display order.
+	if shop_id == "chai":
+		return CHAI_MENU.duplicate()
+	var stock: Array = []
+	var season_name := GameClock.season_key()
+	for crop in ItemDB.get_all_crops():
+		if season_name in crop.get("seasons", []):
+			var seed_id: String = crop.get("seed_id", "")
+			if not ItemDB.get_item(seed_id).is_empty() and not stock.has(seed_id):
+				stock.append(seed_id)
+	for staple in GENERAL_STAPLES:
+		if not ItemDB.get_item(staple).is_empty():
+			stock.append(staple)
+	if not Relationships.dating.is_empty() and Relationships.spouse == "":
+		stock.append(Relationships.PROPOSAL_ITEM)
+	return stock
+
+
+func upgrade_tool(tool_id: String) -> Dictionary:
+	## Selvam upgrades a tool on the spot. Returns { "ok": bool, "message": String }.
+	var inv := get_active_inventory()
+	var cost := GameData.next_tool_upgrade(tool_id)
+	if cost.is_empty():
+		return {"ok": false, "message": "That tool can't be improved any further."}
+	if inv == null or inv.count_item(tool_id) == 0:
+		return {"ok": false, "message": "Bring the tool with you first."}
+	if inv.count_item(cost["ore"]) < int(cost["ore_qty"]):
+		return {"ok": false, "message": "You need %d %s." % [cost["ore_qty"], ItemDB.get_item(cost["ore"]).get("name", cost["ore"])]}
+	if GameData.gold < int(cost["gold"]):
+		return {"ok": false, "message": "You need ₹%d." % cost["gold"]}
+	inv.remove_item(cost["ore"], int(cost["ore_qty"]))
+	GameData.spend_gold(int(cost["gold"]))
+	GameData.set_tool_level(tool_id, GameData.get_tool_level(tool_id) + 1)
+	emit_signal("inventory_updated")
+	return {"ok": true, "message": "Selvam hands back your %s!" % GameData.tool_display_name(tool_id)}
 
 
 func is_bundle_complete(bundle_id: String) -> bool:
@@ -571,9 +773,18 @@ func show_dialogue(speaker: String, lines: Array, on_done: Callable = Callable()
 		popup.show_dialogue(speaker, lines, on_done)
 
 
-func open_shop() -> void:
+func open_shop(shop_id: String = "general") -> void:
+	if shop_id == "blacksmith":
+		if popup and popup.has_method("open_blacksmith"):
+			popup.open_blacksmith()
+		return
 	if popup and popup.has_method("open_shop"):
-		popup.open_shop()
+		popup.open_shop(shop_id)
+
+
+func open_options() -> void:
+	if popup and popup.has_method("open_options"):
+		popup.open_options()
 
 
 func toggle_inventory_screen() -> void:

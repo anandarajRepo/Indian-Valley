@@ -73,7 +73,7 @@
     { "id": "watering_can",    "name": "Watering Can",     "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "watering_can",    "stack_max": 1, "tool_type": "water",    "energy_cost": 2 },
     { "id": "sickle",          "name": "Sickle",           "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "sickle",          "stack_max": 1, "tool_type": "harvest",  "energy_cost": 1 },
     { "id": "fishing_rod",     "name": "Fishing Rod",      "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "fishing_rod",     "stack_max": 1, "tool_type": "fish",     "energy_cost": 4 },
-    { "id": "pickaxe",         "name": "Pickaxe",          "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "pickaxe",         "stack_max": 1, "tool_type": "mine",     "energy_cost": 5 },
+    { "id": "pickaxe",         "name": "Pickaxe",          "category": "tool",    "buy_price": 0,   "sell_price": 0,   "icon": "pickaxe",         "stack_max": 1, "tool_type": "mine",     "energy_cost": 3 },
 
     { "id": "idli",            "name": "Idli",             "category": "food",    "buy_price": 50,  "sell_price": 25,  "icon": "idli",            "stack_max": 10, "energy_restore": 50 },
     { "id": "dosa",            "name": "Dosa",             "category": "food",    "buy_price": 60,  "sell_price": 30,  "icon": "dosa",            "stack_max": 5,  "energy_restore": 40 },
@@ -85,6 +85,21 @@
 
     { "id": "stone",           "name": "Stone",            "category": "mineral", "buy_price": 0,   "sell_price": 2,   "icon": "stone",           "stack_max": 999 },
     { "id": "copper_ore",      "name": "Copper Ore",       "category": "mineral", "buy_price": 0,   "sell_price": 15,  "icon": "copper_ore",      "stack_max": 999 },
-    { "id": "iron_ore",        "name": "Iron Ore",         "category": "mineral", "buy_price": 0,   "sell_price": 25,  "icon": "iron_ore",        "stack_max": 999 }
+    { "id": "iron_ore",        "name": "Iron Ore",         "category": "mineral", "buy_price": 0,   "sell_price": 25,  "icon": "iron_ore",        "stack_max": 999 },
+    { "id": "gold_ore", "name": "Gold Ore", "category": "mineral", "buy_price": 0, "sell_price": 45, "icon": "gold_ore", "stack_max": 999 },
+    { "id": "quartz", "name": "Quartz", "category": "mineral", "buy_price": 0, "sell_price": 60, "icon": "quartz", "stack_max": 999 },
+    { "id": "amethyst", "name": "Amethyst", "category": "mineral", "buy_price": 0, "sell_price": 120, "icon": "amethyst", "stack_max": 999 },
+    { "id": "kanagiri_ruby", "name": "Kanagiri Ruby", "category": "mineral", "buy_price": 0, "sell_price": 250, "icon": "kanagiri_ruby", "stack_max": 999 },
+
+    { "id": "tank_kings_seal", "name": "Tank King's Seal", "category": "artifact", "buy_price": 0, "sell_price": 0, "icon": "tank_kings_seal", "stack_max": 1 },
+
+    { "id": "masala_chai", "name": "Masala Chai", "category": "food", "buy_price": 20, "sell_price": 8, "icon": "masala_chai", "stack_max": 20, "energy_restore": 20 },
+    { "id": "filter_coffee", "name": "Filter Coffee", "category": "food", "buy_price": 25, "sell_price": 10, "icon": "filter_coffee", "stack_max": 20, "energy_restore": 25 },
+    { "id": "medu_vada", "name": "Medu Vada", "category": "food", "buy_price": 45, "sell_price": 20, "icon": "medu_vada", "stack_max": 10, "energy_restore": 40 },
+    { "id": "lemon_rice", "name": "Lemon Rice", "category": "food", "buy_price": 80, "sell_price": 35, "icon": "lemon_rice", "stack_max": 10, "energy_restore": 65 },
+    { "id": "veg_biryani", "name": "Veg Biryani", "category": "food", "buy_price": 150, "sell_price": 60, "icon": "veg_biryani", "stack_max": 5, "energy_restore": 100 },
+
+    { "id": "jasmine_garland", "name": "Jasmine Garland", "category": "special", "buy_price": 250, "sell_price": 0, "icon": "jasmine_garland", "stack_max": 5 },
+    { "id": "wedding_garland", "name": "Wedding Garland", "category": "special", "buy_price": 2500, "sell_price": 0, "icon": "wedding_garland", "stack_max": 1 }
   ]
 }

@@ -7,13 +7,21 @@ class_name NPC
 ## gift tastes and friendship from the Relationships autoload:
 ##   - chatting once a day raises friendship
 ##   - holding a giftable item offers a "Give" choice (one gift per day)
-##   - a shopkeeper (opens_shop = true) also offers to open the store
+##   - a shopkeeper (opens_shop = true) also offers to open their shop:
+##     shop_id "general" (Kavitha), "chai" (Farida) or "blacksmith" (Selvam)
 ## Without an `npc_id`, the exported `dialogue` text is used as-is.
 
 @export var npc_id: String = ""
 @export var npc_name: String = "Villager"
 @export_multiline var dialogue: String = "Hello, traveller."
 @export var opens_shop: bool = false
+@export var shop_id: String = "general"
+
+const SHOP_ACTIONS: Dictionary = {
+	"general":    "Browse the store",
+	"chai":       "Order from the stall",
+	"blacksmith": "Upgrade tools",
+}
 
 
 func _ready() -> void:
@@ -36,8 +44,8 @@ func interact(_player: Node) -> void:
 		options.append("Give %s" % ItemDB.get_item(held).get("name", held))
 		actions.append(func(): _give(held))
 	if opens_shop:
-		options.append("Browse the store")
-		actions.append(func(): gm.open_shop())
+		options.append(SHOP_ACTIONS.get(shop_id, "Browse the store"))
+		actions.append(func(): gm.open_shop(shop_id))
 
 	if options.size() == 1:
 		_chat()
@@ -72,16 +80,18 @@ func _chat() -> void:
 func _after_chat() -> Callable:
 	## Shopkeepers without a menu choice (legacy data) open the store after talking.
 	if opens_shop and npc_id == "":
-		return func(): GameManager.instance.open_shop()
+		return func(): GameManager.instance.open_shop(shop_id)
 	return Callable()
 
 
 func _give(item_id: String) -> void:
 	var gm = GameManager.instance
 	var inv = gm.get_active_inventory()
-	if inv == null or not inv.remove_item(item_id, 1):
+	if inv == null or inv.count_item(item_id) < 1:
 		return
 	var result := Relationships.give_gift(npc_id, item_id)
+	if result.get("consumed", true):
+		inv.remove_item(item_id, 1)
 	gm.show_dialogue(npc_name, result["lines"])
 
 

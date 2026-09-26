@@ -62,6 +62,11 @@ const MAP_H:  int = 15
 ## Fishing pond (tile coords)
 const POND: Rect2i = Rect2i(1, 10, 3, 4)
 
+## Where a spouse spends the day (beside the house / bed).
+const SPOUSE_POS: Vector2 = Vector2(232, 60)
+
+const NPCScript = preload("res://scripts/systems/NPC.gd")
+
 # ---------------------------------------------------------------------------
 # Nodes
 # ---------------------------------------------------------------------------
@@ -88,6 +93,8 @@ func _world_ready() -> void:
 	if shipping_chest and player_instance:
 		shipping_chest.player_inventory = player_instance.inventory
 
+	_spawn_spouse()
+
 
 func _on_tool_used(tool_id: String, tile_pos: Vector2i) -> void:
 	var item = ItemDB.get_item(tool_id)
@@ -98,8 +105,13 @@ func _on_tool_used(tool_id: String, tile_pos: Vector2i) -> void:
 	var category  = item.get("category", "")
 
 	match tool_type:
-		"hoe":     _till_soil(tile_pos)
-		"water":   _water_tile(tile_pos)
+		"hoe":
+			var tiles := _tool_tiles(tool_id, tile_pos)
+			for i in range(tiles.size()):
+				_till_soil(tiles[i], i > 0)
+		"water":
+			for t in _tool_tiles(tool_id, tile_pos):
+				_water_tile(t)
 		"harvest": _harvest_tile(tile_pos)
 
 	if category == "seed":
@@ -208,9 +220,25 @@ func _is_farmable(tile_pos: Vector2i) -> bool:
 		and tile_pos.y >= PLOT_Y and tile_pos.y < PLOT_Y + PLOT_H
 
 
-func _till_soil(tile_pos: Vector2i) -> void:
+func _tool_tiles(tool_id: String, start: Vector2i) -> Array:
+	## Upgraded tools reach further: a row of tiles away from the player.
+	var reach := GameData.tool_reach(tool_id)
+	var step := Vector2i(0, 1)
+	if player_instance:
+		match int(player_instance.facing):
+			1: step = Vector2i(0, -1)   # up
+			2: step = Vector2i(-1, 0)   # left
+			3: step = Vector2i(1, 0)    # right
+	var tiles: Array = []
+	for i in range(reach):
+		tiles.append(start + step * i)
+	return tiles
+
+
+func _till_soil(tile_pos: Vector2i, quiet: bool = false) -> void:
 	if not _is_farmable(tile_pos):
-		_notify("You can only till the farm plot")
+		if not quiet:
+			_notify("You can only till the farm plot")
 		return
 	var key = _key(tile_pos)
 	if _tile_data.has(key):
@@ -223,7 +251,8 @@ func _till_soil(tile_pos: Vector2i) -> void:
 	}
 	GameData.add_skill_xp("farming", 1)
 	_render_tile(tile_pos)
-	_notify("Tilled soil")
+	if not quiet:
+		_notify("Tilled soil")
 
 
 func _water_tile(tile_pos: Vector2i) -> void:
@@ -320,6 +349,31 @@ func _clear_dead(tile_pos: Vector2i) -> void:
 
 func _water_location(tile_pos: Vector2i) -> String:
 	return "pond" if POND.has_point(tile_pos) else ""
+
+# ---------------------------------------------------------------------------
+# Spouse
+# ---------------------------------------------------------------------------
+
+func _spawn_spouse() -> void:
+	## After the wedding your spouse lives here instead of in town.
+	var spouse_id: String = Relationships.spouse
+	if spouse_id == "":
+		return
+	var npc = NPCScript.new()
+	npc.name = "Spouse"
+	npc.npc_id = spouse_id
+	npc.position = SPOUSE_POS
+	var shape := CollisionShape2D.new()
+	var rect := RectangleShape2D.new()
+	rect.size = Vector2(16, 16)
+	shape.shape = rect
+	npc.add_child(shape)
+	var body := Polygon2D.new()
+	var c: Array = Relationships.get_npc(spouse_id).get("color", [0.9, 0.6, 0.4])
+	body.color = Color(c[0], c[1], c[2])
+	body.polygon = PackedVector2Array([Vector2(-6, -14), Vector2(6, -14), Vector2(6, 8), Vector2(-6, 8)])
+	npc.add_child(body)
+	add_child(npc)
 
 # ---------------------------------------------------------------------------
 # Utilities

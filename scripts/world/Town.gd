@@ -2,15 +2,26 @@ extends WorldBase
 ## Town.gd — Viralpadi village hub.
 ##
 ## The social/economic counterpart to the farm: villagers to talk to,
-## Kavitha's General Store, the Panchayat Hall offering baskets, and the town
-## square where each season's festival is held. Reached through the road warp
-## from the farm. Player spawning and HUD wiring are handled by WorldBase.
+## Kavitha's General Store, Farida's chai stall, Selvam's forge, the notice
+## board, the Panchayat Hall offering baskets, and the town square where each
+## season's festival is held. The farm road leads north and the mine road east
+## to Kanagiri Mines. Player spawning and HUD wiring are handled by WorldBase.
 
 @onready var festival_node: Node2D = $Festival
 
 
 func _world_ready() -> void:
 	_setup_festival()
+	_remove_spouse()
+
+
+func _remove_spouse() -> void:
+	## Once married, your spouse lives on the farm rather than in the square.
+	if Relationships.spouse == "":
+		return
+	for child in get_children():
+		if child is NPC and child.npc_id == Relationships.spouse:
+			child.queue_free()
 
 
 func _setup_festival() -> void:
