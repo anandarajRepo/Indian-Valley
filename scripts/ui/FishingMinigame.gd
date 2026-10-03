@@ -98,6 +98,7 @@ func _start_bite() -> void:
 	_zone_start = randf_range(0.05, 0.95 - _zone_size)
 	_marker_pos = 0.0 if randf() < 0.5 else 1.0
 	_marker_dir = 1.0 if _marker_pos == 0.0 else -1.0
+	Audio.play("bite")
 	_status.text = "Something's biting! Reel in when the marker is in the green."
 	_track.visible = true
 	_zone.position = Vector2(_zone_start * TRACK_W, 0)

@@ -160,6 +160,7 @@ func _use_tool() -> void:
 	# Check energy
 	var energy_cost := GameData.tool_energy_cost(held_item["item_id"], int(item_data.get("energy_cost", 1)))
 	if not GameData.spend_energy(energy_cost):
+		Audio.play("error")
 		_notify("You're too tired...")
 		return
 
@@ -179,6 +180,7 @@ func _eat(item_id: String, item_data: Dictionary) -> void:
 		return
 	var amount := int(item_data.get("energy_restore", 0))
 	GameData.restore_energy(amount)
+	Audio.play("eat")
 	_notify("Ate %s  (+%d energy)" % [item_data.get("name", item_id), amount])
 
 

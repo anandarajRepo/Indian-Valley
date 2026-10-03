@@ -92,6 +92,7 @@ func _give(item_id: String) -> void:
 	var result := Relationships.give_gift(npc_id, item_id)
 	if result.get("consumed", true):
 		inv.remove_item(item_id, 1)
+		Audio.play("gift")
 	gm.show_dialogue(npc_name, result["lines"])
 
 

@@ -19,6 +19,9 @@ class_name GameManager
 ##     offerings, Hall donations, the mines, shops and Selvam's tool upgrades.
 ##   - The mornings after: weddings, your spouse's help, waking up at home,
 ##     and (in demo builds) the end of the demo after Year 1.
+##   - Presentation: fade-ins between scenes, music, and level-up fanfares.
+##   - Window lifecycle: autosave when the window is closed mid-game, and the
+##     pause menu when the window loses focus (see Settings).
 ##
 ## Accessed from anywhere via the static `GameManager.instance`.
 
@@ -37,6 +40,9 @@ const FARM_SCENE:      String = "res://scenes/World/Farm.tscn"
 const TOWN_SCENE:      String = "res://scenes/World/Town.tscn"
 const TRAIL_SCENE:     String = "res://scenes/World/GhatsTrail.tscn"
 const MINES_SCENE:     String = "res://scenes/World/Mines.tscn"
+
+## How long the fade from black takes after a scene change.
+const FADE_TIME: float = 0.35
 
 ## Where forageables can appear each morning, per location (tile rects).
 const FORAGE_AREAS: Dictionary = {
@@ -122,6 +128,11 @@ var current_slot: int = 0
 @onready var hud:   CanvasLayer = $HUD
 @onready var popup: CanvasLayer = $Popup
 
+## Full-screen black overlay used for fade-ins (built in _ready).
+var _fade_layer: CanvasLayer = null
+var _fade_rect:  ColorRect   = null
+var _fade_tween: Tween       = null
+
 # ---------------------------------------------------------------------------
 # Godot lifecycle
 # ---------------------------------------------------------------------------
@@ -133,7 +144,29 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	add_to_group("game")
+	_build_fade()
+	# We decide what happens on window close (autosave first).
+	get_tree().set_auto_accept_quit(false)
+	GameData.skill_leveled.connect(_on_skill_leveled)
+	Audio.play_music()
 	show_main_menu()
+
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_WM_CLOSE_REQUEST:
+			quit_game()
+		NOTIFICATION_APPLICATION_FOCUS_OUT:
+			if Settings.pause_on_focus_loss:
+				pause_for_focus_loss()
+
+
+func pause_for_focus_loss() -> bool:
+	## Open the pause menu if the player is mid-game with nothing else open.
+	if not in_game or popup == null or popup._mode != popup.Mode.NONE:
+		return false
+	open_pause_menu()
+	return true
 
 
 func _exit_tree() -> void:
@@ -155,11 +188,13 @@ func _load_scene(path: String) -> void:
 
 	var scene_instance = packed.instantiate()
 	current_scene_node.add_child(scene_instance)
+	fade_in()
 
 
 func goto_world(path: String, spawn: String = "default") -> void:
 	## Transition between playable world scenes (Farm ↔ Town).
 	spawn_target = spawn
+	Audio.play("warp")
 	call_deferred("_load_scene", path)
 
 
@@ -241,6 +276,8 @@ func continue_game() -> bool:
 		return false
 	if not SaveManager.load_game(current_slot):
 		return false
+	if SaveManager.last_load_recovered:
+		call_deferred("show_notification", "Your save was damaged — restored the previous one")
 
 	var data: Dictionary = SaveManager.last_loaded
 	var farm: Dictionary = data.get("farm", {})
@@ -275,6 +312,13 @@ func has_any_save() -> bool:
 
 
 func quit_game() -> void:
+	## Quitting mid-game (window close, or a quit button) saves first.
+	if in_game:
+		save_game()
+	Audio.shutdown()
+	# Give the audio server a moment to let go of its playbacks.
+	await get_tree().process_frame
+	await get_tree().process_frame
 	get_tree().quit()
 
 # ---------------------------------------------------------------------------
@@ -282,6 +326,9 @@ func quit_game() -> void:
 # ---------------------------------------------------------------------------
 
 func save_game() -> bool:
+	# A finished demo never writes Year 2 over the last Year 1 save.
+	if is_demo() and GameClock.current_year > 1:
+		return false
 	var extra := {
 		"farm":      {"tiles": farm_tiles},
 		"inventory": inventory_data,
@@ -314,6 +361,7 @@ func on_overnight(earnings: int) -> void:
 		report["spouse_help"] = apply_spouse_help()
 	report["request"]   = Quests.describe()
 	report["passed_out"] = _wake_at_home()
+	Audio.play("sleep")
 	if report["new_year"]:
 		report["year_review"] = build_year_review(GameClock.current_year - 1)
 		report["demo_end"] = is_demo()
@@ -485,6 +533,7 @@ func pick_forage(location: String, tile: Vector2i) -> bool:
 		spots.remove_at(i)
 		GameData.add_skill_xp("foraging", 3)
 		GameData.record_stat("items_foraged")
+		Audio.play("pickup")
 		show_notification("Found %s" % ItemDB.get_item(item_id).get("name", item_id))
 		return true
 	return false
@@ -523,6 +572,7 @@ func choose_fish(location: String) -> Dictionary:
 func on_fishing_finished(fish_id: String) -> void:
 	## Called by the fishing minigame. An empty id means the fish got away.
 	if fish_id == "":
+		Audio.play("miss")
 		show_notification("The fish got away...")
 		return
 	var fish := ItemDB.get_item(fish_id)
@@ -531,6 +581,7 @@ func on_fishing_finished(fish_id: String) -> void:
 		return
 	GameData.add_skill_xp("fishing", 5 + 2 * int(fish.get("difficulty", 1)))
 	GameData.record_stat("fish_caught")
+	Audio.play("catch")
 	show_notification("Caught a %s!" % fish.get("name", fish_id))
 
 # ---------------------------------------------------------------------------
@@ -603,6 +654,7 @@ func upgrade_tool(tool_id: String) -> Dictionary:
 	inv.remove_item(cost["ore"], int(cost["ore_qty"]))
 	GameData.spend_gold(int(cost["gold"]))
 	GameData.set_tool_level(tool_id, GameData.get_tool_level(tool_id) + 1)
+	Audio.play("level_up")
 	emit_signal("inventory_updated")
 	return {"ok": true, "message": "Selvam hands back your %s!" % GameData.tool_display_name(tool_id)}
 
@@ -642,6 +694,7 @@ func donate_to_bundle(bundle_id: String) -> int:
 	if complete:
 		hall_state["completed"][bundle_id] = true
 		_grant_reward(bundle.get("reward", {}))
+		Audio.play("fanfare")
 		show_notification("%s complete! Reward: %s" % [bundle.get("name", ""), bundle.get("reward", {}).get("text", "")])
 		_check_hall_restored()
 	emit_signal("hall_changed")
@@ -701,6 +754,7 @@ func enter_festival_offering(item_id: String) -> Dictionary:
 	GameData.record_stat("festivals_attended")
 	GameData.add_gold(prize_gold)
 	Relationships.add_points_all(40)
+	Audio.play("fanfare")
 	var prize_id: String = festival.get("prize_item", "")
 	var prize_qty := int(festival.get("prize_qty", 1))
 	var lines: Array = ["What %s offering — %s!" % [tier, item.get("name", item_id)]]
@@ -810,6 +864,41 @@ func open_hall() -> void:
 func open_pause_menu() -> void:
 	if popup and popup.has_method("open_pause_menu"):
 		popup.open_pause_menu()
+
+# ---------------------------------------------------------------------------
+# Presentation
+# ---------------------------------------------------------------------------
+
+func _build_fade() -> void:
+	_fade_layer = CanvasLayer.new()
+	_fade_layer.layer = 30   # above the HUD and popups
+	add_child(_fade_layer)
+	_fade_rect = ColorRect.new()
+	_fade_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade_rect.color = Color(0, 0, 0, 0)
+	_fade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade_layer.add_child(_fade_rect)
+
+
+func fade_in() -> void:
+	## Snap to black and fade the freshly loaded scene in. Purely visual:
+	## the scene is already live, so nothing waits on the fade.
+	if _fade_rect == null:
+		return
+	if _fade_tween:
+		_fade_tween.kill()
+	_fade_rect.color.a = 1.0
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(_fade_rect, "color:a", 0.0, FADE_TIME)
+
+
+func get_fade_alpha() -> float:
+	return _fade_rect.color.a if _fade_rect else 0.0
+
+
+func _on_skill_leveled(skill: String, level: int) -> void:
+	Audio.play("level_up")
+	show_notification("%s level %d!" % [skill.capitalize(), level])
 
 # ---------------------------------------------------------------------------
 # Internal

@@ -52,6 +52,7 @@ func _ship_all(inventory: Node) -> void:
 		shipped_count += qty
 
 	if shipped_count > 0:
+		Audio.play("coin")
 		print("[ShippingChest] Deposited %d items for overnight sale." % shipped_count)
 	else:
 		print("[ShippingChest] Nothing to ship.")

@@ -10,6 +10,7 @@ extends Node
 
 signal gold_changed(new_amount: int)
 signal energy_changed(new_energy: int, max_energy: int)
+signal skill_leveled(skill: String, level: int)
 signal day_ended_processing()  ## Fired during overnight processing before clock ticks
 
 # ---------------------------------------------------------------------------
@@ -197,6 +198,7 @@ func _level_up_skill(skill: String) -> void:
 		"fishing":  skill_fishing  = min(10, skill_fishing  + 1)
 		"combat":   skill_combat   = min(10, skill_combat   + 1)
 	print("[GameData] Levelled up %s to %d!" % [skill, get_skill_level(skill)])
+	emit_signal("skill_leveled", skill, get_skill_level(skill))
 
 
 func get_skill_xp(skill: String) -> int:

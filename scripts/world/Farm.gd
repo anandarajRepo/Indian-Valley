@@ -252,6 +252,7 @@ func _till_soil(tile_pos: Vector2i, quiet: bool = false) -> void:
 	GameData.add_skill_xp("farming", 1)
 	_render_tile(tile_pos)
 	if not quiet:
+		Audio.play("till")
 		_notify("Tilled soil")
 
 
@@ -264,6 +265,7 @@ func _water_tile(tile_pos: Vector2i) -> void:
 		data["watered_day"] = GameClock.days_elapsed
 		GameData.add_skill_xp("farming", 1)
 		_render_tile(tile_pos)
+		Audio.play("water")
 
 
 func _plant_seed(tile_pos: Vector2i, seed_id: String) -> void:
@@ -296,6 +298,7 @@ func _plant_seed(tile_pos: Vector2i, seed_id: String) -> void:
 	data["progress"]    = 0
 	data["stage"]       = 0
 	_render_tile(tile_pos)
+	Audio.play("plant")
 	_notify("Planted %s" % crop.get("name", "crop"))
 
 
@@ -325,6 +328,7 @@ func _harvest_tile(tile_pos: Vector2i) -> void:
 			return
 	GameData.add_skill_xp("farming", 5)
 	GameData.record_stat("crops_harvested")
+	Audio.play("harvest")
 	_notify("Harvested %s" % crop.get("name", "crop"))
 
 	if crop.get("regrows", false):

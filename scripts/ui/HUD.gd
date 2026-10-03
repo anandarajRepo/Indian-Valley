@@ -25,6 +25,9 @@ var notif_label:    Label         = null
 
 var _notif_timer:   float         = 0.0
 const NOTIF_DURATION: float       = 3.0
+const ENERGY_COL:     Color       = Color(0.45, 0.75, 0.35)
+const LOW_ENERGY_COL: Color       = Color(0.85, 0.30, 0.22)
+const LOW_ENERGY_RATIO: float     = 0.2
 
 # ---------------------------------------------------------------------------
 # Godot lifecycle
@@ -202,8 +205,16 @@ func _update_energy(current: int, maximum: int) -> void:
 	if energy_bar:
 		energy_bar.max_value = maximum
 		energy_bar.value     = current
+		# The bar turns red when you're nearly out of energy.
+		var fill := StyleBoxFlat.new()
+		fill.bg_color = LOW_ENERGY_COL if is_energy_low() else ENERGY_COL
+		energy_bar.add_theme_stylebox_override("fill", fill)
 	if energy_label:
 		energy_label.text = "%d" % current
+
+
+func is_energy_low() -> bool:
+	return energy_bar != null and energy_bar.value <= energy_bar.max_value * LOW_ENERGY_RATIO
 
 
 func _update_gold(amount: int) -> void:

@@ -28,6 +28,9 @@ var _dlg_speaker: String   = ""
 var _dlg_on_done: Callable = Callable()
 var _dlg_label:   Label    = null
 var _input_enabled: bool   = false   ## Guards against the opening keypress advancing.
+## Typewriter: how many characters of the current line are showing.
+var _dlg_shown:   float    = 0.0
+var _dlg_blip_at: int      = 0
 
 # --- Views hosted in _content ---------------------------------------------
 var _journal: Control = null
@@ -49,6 +52,17 @@ const COL_ACCENT: Color = UIKit.COL_ACCENT
 func _ready() -> void:
 	_build_root()
 	_hide_root()
+
+
+func _process(delta: float) -> void:
+	if _mode != Mode.DIALOGUE or _dlg_label == null or is_line_revealed():
+		return
+	_dlg_shown += delta * Settings.chars_per_second()
+	_dlg_label.visible_characters = int(_dlg_shown)
+	# A soft blip every few letters, like someone talking.
+	if _dlg_label.visible_characters >= _dlg_blip_at:
+		_dlg_blip_at = _dlg_label.visible_characters + 4
+		Audio.play("blip")
 
 
 func _build_root() -> void:
@@ -136,7 +150,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			or event.is_action_pressed("ui_accept"):
 		match _mode:
 			Mode.DIALOGUE:
-				_advance_dialogue()
+				# The first press finishes typing the line; the next moves on.
+				if is_line_revealed():
+					_advance_dialogue()
+				else:
+					reveal_line()
 				get_viewport().set_input_as_handled()
 			Mode.SUMMARY:
 				_close_summary()
@@ -157,6 +175,8 @@ func _unhandled_input(event: InputEvent) -> void:
 # ---------------------------------------------------------------------------
 
 func _open(mode: int) -> void:
+	if _mode == Mode.NONE:
+		Audio.play("ui_open")
 	_mode = mode
 	_clear_content()
 	_root.visible = true
@@ -168,10 +188,39 @@ func _open(mode: int) -> void:
 func _enable_input_next_frame() -> void:
 	await get_tree().process_frame
 	_input_enabled = true
+	_focus_default()
+
+
+func _focus_default() -> void:
+	## Give the modal's first button focus (unless it chose one itself), so a
+	## gamepad or the keyboard can drive every menu.
+	if _mode == Mode.NONE:
+		return
+	var owner := get_viewport().gui_get_focus_owner()
+	if owner != null and _content.is_ancestor_of(owner):
+		return
+	var first := _first_button(_content)
+	if first:
+		first.grab_focus()
+
+
+func _first_button(node: Node) -> BaseButton:
+	for child in node.get_children():
+		if child.is_queued_for_deletion():
+			continue
+		if child is BaseButton and not child.disabled and child.is_visible_in_tree() \
+				and child.focus_mode != Control.FOCUS_NONE:
+			return child
+		var found := _first_button(child)
+		if found:
+			return found
+	return null
 
 
 func close_all() -> void:
 	var was_open := _mode != Mode.NONE
+	if was_open and _mode != Mode.DIALOGUE and _mode != Mode.CHOICE:
+		Audio.play("ui_close")
 	_dlg_on_done = Callable()
 	_hide_root()
 	_clear_content()
@@ -223,6 +272,20 @@ func _build_dialogue() -> void:
 func _show_dialogue_line() -> void:
 	if _dlg_label:
 		_dlg_label.text = str(_dlg_lines[_dlg_index])
+		_dlg_shown = 0.0
+		_dlg_blip_at = 0
+		_dlg_label.visible_characters = 0 if Settings.chars_per_second() > 0.0 else -1
+
+
+func is_line_revealed() -> bool:
+	return _dlg_label == null or _dlg_label.visible_characters == -1 \
+		or _dlg_label.visible_characters >= _dlg_label.get_total_character_count()
+
+
+func reveal_line() -> void:
+	## Skip the typewriter and show the whole line.
+	if _dlg_label:
+		_dlg_label.visible_characters = -1
 
 
 func _advance_dialogue() -> void:
@@ -394,12 +457,15 @@ func _try_buy(item_id: String, price: int, gold_label: Label) -> void:
 	if inv == null:
 		return
 	if inv.is_full():
+		Audio.play("error")
 		GameManager.instance.show_notification("Inventory full")
 		return
 	if not GameData.spend_gold(price):
+		Audio.play("error")
 		GameManager.instance.show_notification("Not enough gold")
 		return
 	inv.add_item(item_id, 1)
+	Audio.play("coin")
 	gold_label.text = "Your gold: %d" % GameData.gold
 	GameManager.instance.show_notification("Bought %s" % ItemDB.get_item(item_id).get("name", item_id))
 
@@ -584,7 +650,7 @@ func _build_year_review(review: Dictionary) -> Control:
 func open_pause_menu() -> void:
 	_open(Mode.PAUSE)
 
-	var panel := _make_panel(Vector2(360, 420), Vector2(460, 150))
+	var panel := _make_panel(Vector2(360, 330), Vector2(460, 195))
 	_content.add_child(panel)
 
 	var box := _make_vbox(panel, 14)
@@ -633,14 +699,24 @@ func open_pause_menu() -> void:
 
 func open_options() -> void:
 	_open(Mode.OPTIONS)
-	var panel := _make_panel(Vector2(440, 300), Vector2(420, 210))
+	_build_options()
+
+
+func _build_options() -> void:
+	var panel := _make_panel(Vector2(520, 470), Vector2(380, 125))
 	_content.add_child(panel)
-	var box := _make_vbox(panel, 14)
+	var box := _make_vbox(panel, 10)
 
 	var title := _make_label("Options", 22)
 	title.add_theme_color_override("font_color", COL_ACCENT)
 	box.add_child(title)
 
+	box.add_child(_section_label("Audio"))
+	box.add_child(_volume_row("Master", "master", Settings.master_volume))
+	box.add_child(_volume_row("Music", "music", Settings.music_volume))
+	box.add_child(_volume_row("Sound effects", "sfx", Settings.sfx_volume))
+
+	box.add_child(_section_label("Display & gameplay"))
 	var fullscreen := CheckButton.new()
 	fullscreen.text = "Fullscreen"
 	fullscreen.button_pressed = Settings.fullscreen
@@ -653,13 +729,79 @@ func open_options() -> void:
 	relaxed.toggled.connect(func(on: bool): Settings.set_relaxed_clock(on))
 	box.add_child(relaxed)
 
-	var hint := _make_label("Controls and tips are in the journal's Help tab (J).", 12)
+	var focus := CheckButton.new()
+	focus.text = "Pause when the window loses focus"
+	focus.button_pressed = Settings.pause_on_focus_loss
+	focus.toggled.connect(func(on: bool): Settings.set_pause_on_focus_loss(on))
+	box.add_child(focus)
+
+	var speed_row := HBoxContainer.new()
+	speed_row.add_theme_constant_override("separation", 12)
+	var speed_label := _make_label("Text speed", 14)
+	speed_label.custom_minimum_size = Vector2(150, 0)
+	speed_row.add_child(speed_label)
+	var speed := OptionButton.new()
+	for key in Settings.TEXT_SPEED_ORDER:
+		speed.add_item(String(key).capitalize())
+	speed.select(Settings.TEXT_SPEED_ORDER.find(Settings.text_speed))
+	speed.item_selected.connect(func(i: int): Settings.set_text_speed(Settings.TEXT_SPEED_ORDER[i]))
+	speed.custom_minimum_size = Vector2(160, 30)
+	speed_row.add_child(speed)
+	box.add_child(speed_row)
+
+	var hint := _make_label("Controls and tips are in the journal's Help tab (J). Gamepads work too.", 12)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(470, 0)
 	box.add_child(hint)
 
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 12)
+	var reset_btn := _make_button("Reset to defaults")
+	reset_btn.custom_minimum_size = Vector2(200, 34)
+	reset_btn.pressed.connect(func():
+		Settings.reset_to_defaults()
+		_clear_content()
+		_build_options()
+	)
+	buttons.add_child(reset_btn)
 	var close_btn := _make_button("Close  (Esc)")
+	close_btn.custom_minimum_size = Vector2(200, 34)
 	close_btn.pressed.connect(close_all)
-	box.add_child(close_btn)
-	fullscreen.grab_focus()
+	buttons.add_child(close_btn)
+	box.add_child(buttons)
+	close_btn.grab_focus.call_deferred()
+
+
+func _section_label(text: String) -> Label:
+	var l := _make_label(text, 15)
+	l.add_theme_color_override("font_color", COL_ACCENT)
+	return l
+
+
+func _volume_row(label_text: String, bus: String, value: float) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	var name_label := _make_label(label_text, 14)
+	name_label.custom_minimum_size = Vector2(150, 0)
+	row.add_child(name_label)
+	var slider := HSlider.new()
+	slider.min_value = 0
+	slider.max_value = 100
+	slider.step = 5
+	slider.value = round(value * 100.0)
+	slider.custom_minimum_size = Vector2(220, 24)
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(slider)
+	var pct := _make_label("%d%%" % int(slider.value), 14)
+	pct.custom_minimum_size = Vector2(50, 0)
+	row.add_child(pct)
+	slider.value_changed.connect(func(v: float):
+		pct.text = "%d%%" % int(v)
+		Settings.set_volume(bus, v / 100.0)
+		if bus == "sfx":
+			Audio.play("ui_click")
+	)
+	return row
 
 # ---------------------------------------------------------------------------
 # UI helpers

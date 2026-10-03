@@ -23,11 +23,12 @@ Indian Valley is a cozy, handcrafted farming sim where players inherit an overgr
 |---|---|
 | Engine | Godot 4 (GDScript) |
 | Art | Aseprite — 16×16 tiles, 32×48px sprites |
-| Audio | FMOD + Godot AudioStreamPlayer |
+| Audio | Godot AudioStreamPlayer — music & SFX synthesised in-engine (Audio autoload) |
 | Dialogue | Dialogic 2 (Godot plugin) |
 | Save system | JSON (3 slots) |
 | Version control | Git + GitHub |
-| Target platform | PC (Steam) primary |
+| Renderer | GL Compatibility (no Vulkan needed) |
+| Target platform | PC (Steam) primary, gamepad supported |
 
 ## Project Structure
 
@@ -40,7 +41,7 @@ Indian-Valley/
 │   └── Systems/      # Farming tiles, crops, NPCs
 ├── scripts/          # GDScript source files
 │   ├── autoloads/    # Singletons (GameClock, GameData, SaveManager, ItemDB,
-│   │                 #   Calendar, Relationships, Weather, Quests, Settings)
+│   │                 #   Calendar, Relationships, Weather, Quests, Audio, Settings)
 │   ├── player/       # Player controller, tools
 │   ├── world/        # Farm, tilemap, environment
 │   ├── ui/           # HUD, inventory, dialogue
@@ -51,8 +52,9 @@ Indian-Valley/
 │   └── audio/
 ├── data/             # JSON data files (items, crops, npcs, festivals, bundles)
 ├── tests/            # Headless smoke test (SmokeTest.tscn)
-├── tools/            # export_itch.sh — builds & pushes the itch.io demo
-└── export_presets.cfg  # Web / Windows / Linux demo presets
+├── tools/            # export_itch.sh (demo) · export_release.sh (full builds)
+├── CHANGELOG.md      # Release notes per version
+└── export_presets.cfg  # Web / Windows / Linux demo + Windows / Linux release presets
 ```
 
 ## Getting Started
@@ -70,7 +72,7 @@ Indian-Valley/
 | 1 — Vertical Slice | Playable Spring season | ✅ Complete |
 | 2 — Alpha | Full year one | ✅ Complete |
 | 3 — Beta | Content-complete, itch.io demo | ✅ Complete |
-| 4 — Polish | Release-ready | ⏳ Planned |
+| 4 — Polish | Release-ready | ✅ Complete |
 | 5 — Launch | Steam Early Access | ⏳ Planned |
 
 ## Phase 1 — Vertical Slice (Playable Spring)
@@ -237,9 +239,11 @@ It plays through a new game, rain and growth, a season change, fishing,
 foraging, villagers, a festival, the Hall, save/load, v1-save migration and the
 year rollover, then the Beta content — mines, the forge and tool upgrades,
 waking at home, romance and a wedding, requests, the collection, options, v3
-saves and v2 migration, the slot picker and the demo ending — 144 checks. It
+saves and v2 migration, the slot picker and the demo ending, then the Phase 4
+polish — audio, options, typewriter dialogue, fades, focus pausing, level-ups,
+gamepad bindings, crash-safe saves and the credits — 182 checks. It
 exits non-zero on any failure, uses save slot 2 and restores whatever was
-there.
+there (including `settings.cfg`).
 
 ### Building the itch.io demo
 
@@ -256,6 +260,82 @@ The script runs the smoke test first. Godot 4.2 web builds use threads, so
 tick **"SharedArrayBuffer support"** in the itch.io embed options for the
 HTML5 upload. To test the demo ending from the editor, set
 `indian_valley/demo_build=true` in `project.godot`.
+
+## Phase 4 — Polish (Release-ready, v0.9.0-rc1)
+
+The game is now release-ready: it has sound, more options, gamepad support,
+saves that survive a crash, and full (non-demo) release builds. See
+[CHANGELOG.md](CHANGELOG.md) for the full list.
+
+**Sound & music.** Everything you hear is synthesised in-engine by the `Audio`
+autoload, so the game needs no audio files:
+
+- a looping tune in raga Mohanam over a tanpura-style drone
+- sound effects for tools, harvests, coins, mining, fishing, gifts and menus
+- a rain loop on rainy days
+
+Music and sound effects run on separate buses, so each has its own volume.
+
+**Options** (title screen or pause menu):
+
+- Master, Music and Sound-effect volume
+- Fullscreen
+- Relaxed clock
+- Text speed: slow, normal, fast or instant
+- Pause when the window loses focus
+- Reset to defaults
+
+**Feel**
+- Dialogue types out. Press once to finish the line and again to continue.
+- The screen fades in from black whenever the scene changes.
+- Skill level-ups are announced with a fanfare.
+- The energy bar turns red when you are nearly out of energy.
+
+**Gamepad**
+
+| Action | Button |
+|---|---|
+| Move | Left stick / D-pad |
+| Interact / talk / confirm | A |
+| Use tool, plant, eat | X |
+| Hotbar | LB / RB |
+| Inventory | Y |
+| Journal | Back / Select |
+| Pause, close menus | Start / B |
+
+Every menu takes focus, so you can navigate all of them with the d-pad.
+
+**Saves you can trust**
+- Each save goes to a temporary file first and is checked before it replaces
+  the old one. The previous save is kept as `slot_N.json.bak`.
+- If a save file is damaged, the game loads the backup and tells you so.
+- The slot picker marks a slot it can't read as *Damaged save*.
+- Closing the window mid-game saves first.
+
+**Credits** — on the title screen, including the Godot Engine licence notice.
+
+### Building a release
+
+```
+tools/export_release.sh          # → build/release/{windows,linux}
+tools/export_release.sh --zip    # also zips each platform for upload
+```
+
+The script runs the smoke test first. The release presets have no `demo`
+tag, so the game carries on past Year 1. The itch.io demo is still built with
+`tools/export_itch.sh`.
+
+### Troubleshooting
+
+Settings, saves and logs live in Godot's user folder:
+
+| OS | Folder |
+|---|---|
+| Windows | `%APPDATA%\Godot\app_userdata\Indian Valley` |
+| Linux | `~/.local/share/godot/app_userdata/Indian Valley` |
+
+Logs are in `logs/` and saves are in `saves/`. Delete `settings.cfg` there to
+reset all options.
 
 ## Setting & Lore
 

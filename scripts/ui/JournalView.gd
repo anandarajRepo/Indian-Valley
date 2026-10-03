@@ -251,6 +251,7 @@ func _build_collection() -> void:
 const HELP_LINES: Array = [
 	"Move: WASD / arrows   ·   Use tool, plant, eat: left-click or X   ·   Interact / talk: Z or Enter",
 	"Hotbar: 1–5 or Q / E   ·   Inventory: I / T   ·   Journal: J   ·   Pause & options: Esc   ·   Sleep at home: F",
+	"Gamepad: stick / d-pad move   ·   A interact   ·   X use tool   ·   LB / RB hotbar   ·   Y inventory   ·   Back journal   ·   Start / B pause & close",
 	"",
 	"Farming — till with the hoe, plant in-season seeds, water every day (rain does it for you), harvest with the sickle and ship crops in the chest by the farmhouse. Crops wither when their season ends.",
 	"Energy — tools cost energy. Eat food or edible forage to recover. At 0 energy or 2 am you pass out; away from home you'll wake with half energy.",

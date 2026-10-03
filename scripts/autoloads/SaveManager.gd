@@ -2,6 +2,9 @@ extends Node
 ## SaveManager.gd — Autoload handling JSON save/load across 3 slots.
 ##
 ## Save file path: user://saves/slot_{n}.json
+## Writes are crash-safe: the new save goes to slot_{n}.json.tmp first, the
+## previous save is kept as slot_{n}.json.bak, then the temp file is moved into
+## place. A damaged save file falls back to the backup when loading.
 ## Each save contains: clock state, player data, weather, friendships, calendar
 ## progress, plus scene data from the GameManager (farm tiles, inventory,
 ## forage spawns, Panchayat Hall offerings).
@@ -21,6 +24,9 @@ signal load_failed(slot: int, reason: String)
 ## The full parsed contents of the most recently loaded save. Lets the game
 ## manager pull scene-specific sections (farm tiles, inventory) after a load.
 var last_loaded: Dictionary = {}
+
+## True when the most recent load had to fall back to the .bak file.
+var last_load_recovered: bool = false
 
 
 func _ready() -> void:
@@ -60,13 +66,8 @@ func save_game(slot: int, extra_data: Dictionary = {}) -> bool:
 		data[key] = extra_data[key]
 
 	var path = _slot_path(slot)
-	var file = FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("SaveManager: could not open %s for writing" % path)
+	if not _write_atomic(path, JSON.stringify(data, "\t")):
 		return false
-
-	file.store_string(JSON.stringify(data, "\t"))
-	file.close()
 
 	emit_signal("save_completed", slot)
 	print("[SaveManager] Game saved to slot %d (%s)" % [slot, path])
@@ -83,19 +84,19 @@ func load_game(slot: int) -> bool:
 		return false
 
 	var path = _slot_path(slot)
-	if not FileAccess.file_exists(path):
+	if not FileAccess.file_exists(path) and not FileAccess.file_exists(_backup_path(slot)):
 		emit_signal("load_failed", slot, "File not found")
 		return false
 
-	var text = FileAccess.get_file_as_string(path)
-	if text.is_empty():
-		emit_signal("load_failed", slot, "Empty file")
-		return false
-
-	var data = JSON.parse_string(text)
-	if data == null:
-		emit_signal("load_failed", slot, "JSON parse error")
-		return false
+	last_load_recovered = false
+	var data := _read_save(path)
+	if data.is_empty():
+		data = _read_save(_backup_path(slot))
+		if data.is_empty():
+			emit_signal("load_failed", slot, "Save file is damaged")
+			return false
+		push_warning("SaveManager: slot %d was damaged — loaded the backup" % slot)
+		last_load_recovered = true
 
 	# Version migration hook (extend as needed)
 	var file_version = data.get("version", 0)
@@ -128,17 +129,14 @@ func load_game(slot: int) -> bool:
 
 func get_slot_info(slot: int) -> Dictionary:
 	## Returns metadata for a slot without fully loading it, or {} if empty.
-	var path = _slot_path(slot)
-	if not FileAccess.file_exists(path):
+	if not slot_exists(slot):
 		return {}
 
-	var text = FileAccess.get_file_as_string(path)
-	if text.is_empty():
-		return {}
-
-	var data = JSON.parse_string(text)
-	if data == null:
-		return {}
+	var data := _read_save(_slot_path(slot))
+	if data.is_empty():
+		data = _read_save(_backup_path(slot))
+	if data.is_empty():
+		return {"slot": slot, "damaged": true, "saved_at": ""}
 
 	var clock = data.get("clock", {})
 	var player = data.get("player", {})
@@ -158,6 +156,8 @@ func describe_slot(slot: int) -> String:
 	var info := get_slot_info(slot)
 	if info.is_empty():
 		return "Empty"
+	if info.get("damaged", false):
+		return "Damaged save"
 	return "%s — Day %d, %s, Year %d · ₹%d" % [info["player_name"], info["day"],
 		GameClock.SEASON_NAMES.get(info["season"], "?"), info["year"], info["gold"]]
 
@@ -168,7 +168,7 @@ func most_recent_slot() -> int:
 	var best_time := ""
 	for slot in range(SLOT_COUNT):
 		var info := get_slot_info(slot)
-		if info.is_empty():
+		if info.is_empty() or info.get("damaged", false):
 			continue
 		if best == -1 or String(info["saved_at"]) > best_time:
 			best = slot
@@ -177,13 +177,13 @@ func most_recent_slot() -> int:
 
 
 func slot_exists(slot: int) -> bool:
-	return FileAccess.file_exists(_slot_path(slot))
+	return FileAccess.file_exists(_slot_path(slot)) or FileAccess.file_exists(_backup_path(slot))
 
 
 func delete_slot(slot: int) -> void:
-	var path = _slot_path(slot)
-	if FileAccess.file_exists(path):
-		DirAccess.remove_absolute(path)
+	for path in [_slot_path(slot), _backup_path(slot), _slot_path(slot) + ".tmp"]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
 
 
 # ---------------------------------------------------------------------------
@@ -192,6 +192,57 @@ func delete_slot(slot: int) -> void:
 
 func _slot_path(slot: int) -> String:
 	return SAVE_DIR + "slot_%d.json" % slot
+
+
+func _backup_path(slot: int) -> String:
+	return _slot_path(slot) + ".bak"
+
+
+func _write_atomic(path: String, text: String) -> bool:
+	## Write `text` to a temp file, keep the old file as .bak, then swap the
+	## temp file in. A crash at any point leaves a loadable save behind.
+	_ensure_save_dir()
+	var tmp := path + ".tmp"
+	var file := FileAccess.open(tmp, FileAccess.WRITE)
+	if file == null:
+		push_error("SaveManager: could not open %s for writing" % tmp)
+		return false
+	file.store_string(text)
+	file.close()
+	if _read_save(tmp).is_empty():
+		push_error("SaveManager: %s failed verification" % tmp)
+		DirAccess.remove_absolute(tmp)
+		return false
+	var bak := path + ".bak"
+	if FileAccess.file_exists(path):
+		# Only a good save becomes the backup — never overwrite it with junk.
+		if not _read_save(path).is_empty():
+			if FileAccess.file_exists(bak):
+				DirAccess.remove_absolute(bak)
+			DirAccess.rename_absolute(path, bak)
+		else:
+			DirAccess.remove_absolute(path)
+	if DirAccess.rename_absolute(tmp, path) != OK:
+		push_error("SaveManager: could not move %s into place" % tmp)
+		return false
+	return true
+
+
+func _read_save(path: String) -> Dictionary:
+	## Parse a save file; {} when it is missing, empty or not a save.
+	if not FileAccess.file_exists(path):
+		return {}
+	var text := FileAccess.get_file_as_string(path)
+	if text.is_empty():
+		return {}
+	# JSON.parse (unlike parse_string) reports bad files quietly.
+	var json := JSON.new()
+	if json.parse(text) != OK:
+		return {}
+	var data = json.data
+	if not data is Dictionary or not data.has("clock"):
+		return {}
+	return data
 
 
 func _migrate(data: Dictionary, from_version: int) -> Dictionary:
