@@ -4,7 +4,8 @@ extends CanvasLayer
 ## Sits between the world and the HUD (layer 5):
 ##   - evenings darken gradually from 6 pm and are darkest after 10 pm
 ##   - rainy days get a grey wash and falling rain streaks (heavier in storms)
-## Purely visual; hidden on the main menu.
+## Hidden on the main menu. Also drives the rain ambience loop (not heard
+## underground in the mines).
 
 const RAIN_DROPS:  int = 90
 const STORM_DROPS: int = 180
@@ -37,6 +38,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	Audio.set_ambience("rain" if _hears_rain() else "")
 	if not visible:
 		return
 	_tint.color = _compute_tint()
@@ -56,6 +58,14 @@ func _process(delta: float) -> void:
 	elif _rain.visible:
 		_rain.queue_redraw()
 	_rain.visible = Weather.is_raining()
+
+
+func _hears_rain() -> bool:
+	var gm = GameManager.instance
+	if not visible or gm == null or not Weather.is_raining():
+		return false
+	var world: Node = gm.get_active_world()
+	return world != null and world.name != "Mines"
 
 
 func _compute_tint() -> Color:

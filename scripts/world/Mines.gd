@@ -191,6 +191,7 @@ func hit_rock(tile: Vector2i) -> bool:
 		var body := rock["node"].get_child(1) as Polygon2D
 		if body:
 			body.color = body.color.darkened(0.2)
+		Audio.play("rock_hit")
 		return false
 
 	var info: Dictionary = ROCKS[rock["type"]]
@@ -203,6 +204,7 @@ func hit_rock(tile: Vector2i) -> bool:
 			gm.show_notification("Inventory full")
 	GameData.add_skill_xp("mining", int(info["xp"]))
 	GameData.record_stat("rocks_broken")
+	Audio.play("rock_break")
 	rock["node"].queue_free()
 	rocks.erase(key)
 
@@ -216,6 +218,7 @@ func reveal_ladder(tile: Vector2i) -> void:
 		Color(0.12, 0.08, 0.05), func(): descend())
 	ladder.name = "LadderDown"
 	add_child(ladder)
+	Audio.play("discover")
 	if GameManager.instance:
 		GameManager.instance.show_notification("You found a ladder leading down!")
 

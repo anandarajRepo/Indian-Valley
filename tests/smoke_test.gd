@@ -1,11 +1,13 @@
 extends Node
-## Headless smoke test for the Phase 3 (Beta) build: the full year loop plus
-## the mines, forge, romance, requests, collection, save slots and demo ending.
+## Headless smoke test for the Phase 4 (Polish) build: the full year loop, the
+## mines, forge, romance, requests, collection, save slots and demo ending,
+## plus the release polish — audio, options, typewriter dialogue, fades,
+## gamepad bindings, crash-safe saves and the credits.
 ##
 ## Run from the project root:
 ##   godot --headless res://tests/SmokeTest.tscn
 ## Exits with code 0 when every check passes, 1 otherwise. Uses save slot 2
-## and restores whatever was there before.
+## and restores whatever was there before (settings.cfg too).
 
 const MAIN_SCENE := "res://scenes/Main.tscn"
 const TEST_SLOT := 2
@@ -14,6 +16,8 @@ var gm: GameManager = null
 var _passed := 0
 var _failed := 0
 var _slot_backup := ""
+var _bak_backup := ""
+var _settings_backup := ""
 
 
 func _ready() -> void:
@@ -68,16 +72,29 @@ func _backup_slot() -> void:
 	var path := SaveManager._slot_path(TEST_SLOT)
 	if FileAccess.file_exists(path):
 		_slot_backup = FileAccess.get_file_as_string(path)
+	if FileAccess.file_exists(SaveManager._backup_path(TEST_SLOT)):
+		_bak_backup = FileAccess.get_file_as_string(SaveManager._backup_path(TEST_SLOT))
+	if FileAccess.file_exists(Settings.PATH):
+		_settings_backup = FileAccess.get_file_as_string(Settings.PATH)
+
+
+func _write(path: String, text: String) -> void:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(text)
+	f.close()
 
 
 func _restore_slot() -> void:
-	var path := SaveManager._slot_path(TEST_SLOT)
+	SaveManager.delete_slot(TEST_SLOT)
 	if _slot_backup != "":
-		var f := FileAccess.open(path, FileAccess.WRITE)
-		f.store_string(_slot_backup)
-		f.close()
-	else:
-		SaveManager.delete_slot(TEST_SLOT)
+		_write(SaveManager._slot_path(TEST_SLOT), _slot_backup)
+	if _bak_backup != "":
+		_write(SaveManager._backup_path(TEST_SLOT), _bak_backup)
+	if _settings_backup != "":
+		_write(Settings.PATH, _settings_backup)
+	elif FileAccess.file_exists(Settings.PATH):
+		DirAccess.remove_absolute(Settings.PATH)
+	Settings.load_settings()
 
 
 func _run() -> void:
@@ -528,7 +545,11 @@ func _run() -> void:
 	check(not gm.in_game and world().name == "MainMenu", "demo returns to the title screen")
 	gm.demo_override = -1
 
+	await _polish_checks()
+
 	_restore_slot()
+	Audio.shutdown()
+	await frames(3)
 	print("\nSmoke test: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
 
@@ -538,3 +559,147 @@ func Mines_rock_table_ok() -> bool:
 	var shallow := Mines.rock_table(1).map(func(e): return e[0])
 	var deep := Mines.rock_table(18).map(func(e): return e[0])
 	return not "gold" in shallow and "gold" in deep and "ruby" in deep
+
+
+func _polish_checks() -> void:
+	print("[24] Audio")
+	var all_render := true
+	for sfx in Audio.RECIPES:
+		var stream: AudioStreamWAV = Audio.get_stream(sfx)
+		if stream == null or stream.data.size() < 100:
+			all_render = false
+	check(all_render, "every sound effect synthesises")
+	check(Audio.play("coin") and not Audio.play("no_such_sound"), "play() knows its sounds")
+	var tune := Audio.render_music(Audio.MUSIC_BEAT * 4.0)
+	check(tune.loop_mode == AudioStreamWAV.LOOP_FORWARD and tune.loop_end == int(Audio.MUSIC_BEAT * 4.0 * Audio.MIX_RATE), "music loops seamlessly")
+	check(AudioServer.get_bus_index(Audio.MUSIC_BUS) != -1 and AudioServer.get_bus_index(Audio.SFX_BUS) != -1, "music and SFX buses exist")
+	gm.new_game(TEST_SLOT, "Polish")
+	await frames(3)
+	gm.popup.close_all()
+	Weather.today = Weather.RAIN
+	await frames(2)
+	check(Audio.get_ambience() == "rain", "rain ambience on rainy days")
+	gm.enter_mine_floor(1)
+	await frames(3)
+	check(Audio.get_ambience() == "", "no rain heard in the mines")
+	Weather.today = Weather.SUNNY
+	gm.goto_farm("default")
+	await frames(3)
+
+	print("[25] Options")
+	Settings.set_volume("music", 0.5)
+	check(absf(Audio.get_bus_volume(Audio.MUSIC_BUS) - 0.5) < 0.01, "music volume reaches the bus")
+	Settings.set_volume("sfx", 0.0)
+	check(AudioServer.is_bus_mute(AudioServer.get_bus_index(Audio.SFX_BUS)), "zero volume mutes")
+	Settings.set_text_speed("fast")
+	Settings.set_pause_on_focus_loss(false)
+	Settings.load_settings()
+	check(Settings.text_speed == "fast" and not Settings.pause_on_focus_loss and is_equal_approx(Settings.music_volume, 0.5), "options persist to settings.cfg")
+	Settings.reset_to_defaults()
+	check(Settings.text_speed == "normal" and Settings.pause_on_focus_loss and is_equal_approx(Settings.sfx_volume, 0.8), "reset to defaults")
+	check(not AudioServer.is_bus_mute(AudioServer.get_bus_index(Audio.SFX_BUS)), "reset unmutes")
+	gm.open_options()
+	await frames(2)
+	check(gm.popup._mode == gm.popup.Mode.OPTIONS, "options open with audio controls")
+	gm.popup.close_all()
+
+	print("[26] Typewriter dialogue")
+	gm.show_dialogue("Test", ["A fairly long line of dialogue to type out.", "Second line."])
+	await frames(2)
+	check(not gm.popup.is_line_revealed(), "lines type out")
+	var press := InputEventAction.new()
+	press.action = "interact"
+	press.pressed = true
+	gm.popup._unhandled_input(press)
+	check(gm.popup.is_line_revealed() and gm.popup._dlg_index == 0, "first press finishes the line")
+	gm.popup._unhandled_input(press)
+	check(gm.popup._dlg_index == 1, "next press moves on")
+	await get_tree().create_timer(0.5).timeout
+	check(gm.popup.is_line_revealed(), "a short line finishes typing on its own")
+	gm.popup.close_all()
+	Settings.set_text_speed("instant")
+	gm.show_dialogue("Test", ["Instant."])
+	await frames(1)
+	check(gm.popup.is_line_revealed(), "instant text speed")
+	gm.popup.close_all()
+	Settings.set_text_speed("normal")
+
+	print("[27] Fades, focus and level-ups")
+	gm.goto_town("from_farm")
+	await frames(2)
+	check(gm.get_fade_alpha() > 0.5, "scene change fades from black")
+	await get_tree().create_timer(GameManager.FADE_TIME + 0.2).timeout
+	check(gm.get_fade_alpha() == 0.0, "fade clears")
+	check(gm.pause_for_focus_loss() and gm.popup._mode == gm.popup.Mode.PAUSE, "losing focus pauses the game")
+	await frames(2)
+	var focused := get_viewport().gui_get_focus_owner()
+	check(focused is Button and focused.text == "Resume", "menus take focus for gamepads")
+	check(not gm.pause_for_focus_loss(), "focus loss doesn't stack menus")
+	gm.popup.close_all()
+	var level_before := GameData.get_skill_level("fishing")
+	GameData.add_skill_xp("fishing", 100000)
+	check(GameData.get_skill_level("fishing") == level_before + 1 and gm.hud.notif_label.text.begins_with("Fishing level"), "level-ups are announced")
+	GameData.energy_current = 5
+	GameData.emit_signal("energy_changed", 5, GameData.energy_max)
+	check(gm.hud.is_energy_low(), "low energy warning")
+	GameData.restore_energy()
+
+	print("[28] Gamepad")
+	var pad_ok := true
+	for action in ["move_up", "move_down", "move_left", "move_right", "interact", "use_tool",
+			"hotbar_prev", "hotbar_next", "inventory_toggle", "journal", "ui_cancel"]:
+		var has_pad := false
+		for ev in InputMap.action_get_events(action):
+			if ev is InputEventJoypadButton:
+				has_pad = true
+		pad_ok = pad_ok and has_pad
+	check(pad_ok, "every action has a gamepad button")
+	var stick := InputEventJoypadMotion.new()
+	stick.axis = JOY_AXIS_LEFT_X
+	stick.axis_value = 1.0
+	check(InputMap.event_is_action(stick, "move_right"), "left stick moves")
+	var start := InputEventJoypadButton.new()
+	start.button_index = JOY_BUTTON_START
+	start.pressed = true
+	check(InputMap.event_is_action(start, "ui_cancel"), "Start opens the pause menu")
+
+	print("[29] Crash-safe saves")
+	var path := SaveManager._slot_path(TEST_SLOT)
+	GameData.gold = 4242
+	gm.save_game()
+	GameData.gold = 99
+	gm.save_game()
+	check(FileAccess.file_exists(SaveManager._backup_path(TEST_SLOT)) and not FileAccess.file_exists(path + ".tmp"), "previous save kept as a backup")
+	_write(path, "{ this is not json")
+	check(SaveManager.describe_slot(TEST_SLOT).begins_with("Polish"), "damaged slot still lists its backup")
+	check(gm.continue_game(), "damaged save falls back to the backup")
+	await frames(3)
+	check(SaveManager.last_load_recovered and GameData.gold == 4242, "backup restores the earlier save")
+	gm.save_game()
+	check(int(SaveManager._read_save(path).get("player", {}).get("gold", 0)) == 4242, "next save repairs the slot")
+	_write(path, "garbage")
+	_write(SaveManager._backup_path(TEST_SLOT), "garbage")
+	check(SaveManager.describe_slot(TEST_SLOT) == "Damaged save", "unreadable slot is flagged")
+	check(not gm.continue_game(), "an unreadable slot doesn't load")
+	SaveManager.delete_slot(TEST_SLOT)
+	check(not SaveManager.slot_exists(TEST_SLOT), "deleting a slot removes its backup too")
+	gm.demo_override = 1
+	GameClock.current_year = 2
+	check(not gm.save_game() and not SaveManager.slot_exists(TEST_SLOT), "a finished demo never saves Year 2")
+	gm.demo_override = -1
+	GameClock.current_year = 1
+
+	print("[30] Credits & version")
+	gm.show_main_menu()
+	await frames(3)
+	var menu := world()
+	menu.show_credits()
+	await frames(2)
+	var credit_text := ""
+	for child in menu._box.get_children():
+		if child is Label:
+			credit_text += child.text
+	check("Godot Engine" in credit_text and "MIT" in credit_text, "credits carry the Godot licence notice")
+	check(String(ProjectSettings.get_setting("application/config/version")).begins_with("0.9"), "release-candidate version")
+	menu.show_main()
+	await frames(2)

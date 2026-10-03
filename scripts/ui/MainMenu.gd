@@ -5,12 +5,22 @@ extends Control
 ##   main  — Continue (latest save) / New Game / Load Game / Options / Quit
 ##   slots — pick one of the three save slots (to start a new game or to load)
 ##   name  — name your farmer, then start in the chosen slot
+##   credits — who made the game, plus the Godot Engine licence notice
 ## Buttons drive the GameManager flow (new_game / load_slot / quit_game).
 
 const COL_TEXT:   Color = Color(0.96, 0.90, 0.74)
 const COL_ACCENT: Color = Color(0.85, 0.66, 0.24)
 const COL_MUTED:  Color = Color(0.72, 0.64, 0.50)
 const COL_BG:     Color = Color(0.094, 0.078, 0.047)
+
+const CREDITS_LINES: Array = [
+	["Indian Valley", "a farming & life sim set in Viralpadi Valley"],
+	["Design, code & writing", "Indian Valley Project"],
+	["Music & sound", "synthesised in-engine — raga Mohanam over a tanpura drone"],
+	["Inspired by", "the farms, festivals and people of rural South India"],
+	["Built with", "Godot Engine"],
+]
+const GODOT_NOTICE: String = "This game uses Godot Engine, available under the MIT licence.\n© 2014-present Godot Engine contributors. © 2007-2014 Juan Linietsky, Ariel Manzur."
 
 var _box: VBoxContainer = null
 var _pending_slot: int = 0
@@ -95,6 +105,10 @@ func show_main() -> void:
 			GameManager.instance.open_options())
 	_box.add_child(options_btn)
 
+	var credits_btn := _button("Credits")
+	credits_btn.pressed.connect(show_credits)
+	_box.add_child(credits_btn)
+
 	var quit_btn := _button("Quit")
 	quit_btn.pressed.connect(_on_quit)
 	_box.add_child(quit_btn)
@@ -114,7 +128,7 @@ func show_slots(for_new_game: bool) -> void:
 		var exists := SaveManager.slot_exists(slot)
 		var b := _button("Slot %d:  %s" % [slot + 1, SaveManager.describe_slot(slot)])
 		b.custom_minimum_size = Vector2(520, 46)
-		b.disabled = not for_new_game and not exists
+		b.disabled = not for_new_game and (not exists or SaveManager.get_slot_info(slot).get("damaged", false))
 		var s := slot
 		if for_new_game:
 			b.pressed.connect(func(): _pick_new_slot(s, exists))
@@ -128,6 +142,27 @@ func show_slots(for_new_game: bool) -> void:
 	back.pressed.connect(show_main)
 	_box.add_child(back)
 	(first if first else back).grab_focus.call_deferred()
+
+
+func show_credits() -> void:
+	_clear()
+	_header()
+	for entry in CREDITS_LINES:
+		var role := _label(entry[0], 14)
+		role.add_theme_color_override("font_color", COL_MUTED)
+		role.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_box.add_child(role)
+		var who := _label(entry[1], 18)
+		who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_box.add_child(who)
+	var notice := _label(GODOT_NOTICE, 11)
+	notice.add_theme_color_override("font_color", COL_MUTED)
+	notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_box.add_child(notice)
+	var back := _button("Back")
+	back.pressed.connect(show_main)
+	_box.add_child(back)
+	back.grab_focus.call_deferred()
 
 
 func _pick_new_slot(slot: int, exists: bool) -> void:
@@ -221,4 +256,5 @@ func _button(text: String) -> Button:
 	b.text = text
 	b.add_theme_font_size_override("font_size", 20)
 	b.custom_minimum_size = Vector2(260, 46)
+	b.pressed.connect(func(): Audio.play("ui_click"))
 	return b
